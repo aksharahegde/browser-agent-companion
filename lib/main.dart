@@ -18,13 +18,15 @@ Future<void> main() async {
     size: Size(AppConfig.overlayDefaultWidth, AppConfig.overlayDefaultHeight),
     minimumSize: Size(AppConfig.overlayDefaultWidth, AppConfig.overlayDefaultHeight),
     center: true,
-    backgroundColor: Color(0xFF1A1B1E),
+    backgroundColor: Colors.transparent,
     skipTaskbar: true,
     titleBarStyle: TitleBarStyle.hidden,
     alwaysOnTop: true,
   );
 
-  await windowManager.waitUntilReadyToShow(windowOptions);
+  await windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.setBackgroundColor(Colors.transparent);
+  });
 
   runApp(
     const ProviderScope(

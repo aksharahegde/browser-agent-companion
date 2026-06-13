@@ -5,7 +5,12 @@ import '../../data/models/trace_event.dart';
 import '../../data/models/workflow.dart';
 import '../../core/overlay_window_service.dart';
 import '../../shared/providers.dart';
-import '../../shared/widgets/connection_badge.dart';
+import '../../shared/theme.dart';
+import '../../shared/widgets/glass_list_row.dart';
+import '../../shared/widgets/overlay_top_bar.dart';
+import '../../shared/widgets/panel_section.dart';
+import '../../shared/widgets/toggle_row.dart';
+import '../../shared/widgets/trace_timeline.dart';
 
 class OverlayWindow extends ConsumerStatefulWidget {
   const OverlayWindow({super.key});
@@ -46,257 +51,173 @@ class _OverlayWindowState extends ConsumerState<OverlayWindow> {
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
     final workflowsAsync = ref.watch(workflowsProvider);
+    final tokens = context.tokens;
 
-    return Material(
-      color: Theme.of(context).scaffoldBackgroundColor.withValues(
-            alpha: settings.overlayOpacity,
-          ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFF34373F)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          _buildTitleBar(context, settings.agentHost),
-          const Divider(height: 1),
-          Expanded(
-            child: Row(
-              children: [
-                Expanded(flex: 2, child: _buildPromptPanel(workflowsAsync)),
-                const VerticalDivider(width: 1),
-                Expanded(flex: 3, child: TraceTimeline(events: _trace)),
-                const VerticalDivider(width: 1),
-                Expanded(flex: 2, child: _buildHistoryPanel()),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTitleBar(BuildContext context, String host) {
-    final sessionsAsync = ref.watch(sessionsProvider);
-    final activeId = ref.watch(settingsProvider).activeSessionId;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
-        children: [
-          Flexible(
-            child: Text(
-              'CUA Companion',
-              style: Theme.of(context).textTheme.titleLarge,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Flexible(
-            flex: 2,
-            child: sessionsAsync.when(
-              data: (sessions) {
-                if (sessions.isEmpty) {
-                  return const SizedBox.shrink();
-                }
-                final active = sessions.firstWhere(
-                  (s) => s.id == activeId,
-                  orElse: () => sessions.first,
-                );
-                return PopupMenuButton<String>(
-                  tooltip: 'Session',
-                  onSelected: (value) async {
-                    if (value == '__new__') {
-                      await ref
-                          .read(sessionServiceProvider)
-                          .createAndSwitchSession();
-                    } else {
-                      await ref
-                          .read(sessionServiceProvider)
-                          .switchActiveSession(value);
-                    }
-                    ref.invalidate(sessionsProvider);
-                    ref.invalidate(runHistoryProvider);
-                    if (mounted) setState(() => _promptController.clear());
-                  },
-                  itemBuilder: (context) => [
-                    ...sessions.map(
-                      (s) => PopupMenuItem(
-                        value: s.id,
-                        child: Text(
-                          s.id == activeId ? '✓ ${s.title}' : s.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ),
-                    const PopupMenuDivider(),
-                    const PopupMenuItem(
-                      value: '__new__',
-                      child: Text('New session'),
-                    ),
-                  ],
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          active.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ),
-                      const Icon(Icons.arrow_drop_down, size: 20),
-                    ],
-                  ),
-                );
-              },
-              loading: () => const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
+    return Column(
+      children: [
+        OverlayTopBar(
+          connectionStatus: _connectionStatus,
+          host: settings.agentHost,
+          onMinimize: () => hideOverlayWindow(ref),
+          onQuit: () => ref.read(appLifecycleServiceProvider).quitApp(),
+          onSessionChanged: () {
+            if (mounted) setState(() => _promptController.clear());
+          },
+        ),
+        Divider(height: 1, color: tokens.hairline),
+        Expanded(
+          child: Row(
+            children: [
+              PanelSection(
+                flex: 2,
+                title: 'Prompt',
+                child: _buildPromptPanel(workflowsAsync),
               ),
-              error: (_, __) => const SizedBox.shrink(),
-            ),
-          ),
-          const SizedBox(width: 8),
-          ConnectionBadge(status: _connectionStatus, host: host),
-          const SizedBox(width: 8),
-          PopupMenuButton<String>(
-            tooltip: 'More',
-            onSelected: (value) async {
-              switch (value) {
-                case 'minimize':
-                  await hideOverlayWindow(ref);
-                case 'quit':
-                  await ref.read(appLifecycleServiceProvider).quitApp();
-              }
-            },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'minimize', child: Text('Minimize to menu bar')),
-              PopupMenuItem(value: 'quit', child: Text('Quit')),
+              SizedBox(
+                width: 1,
+                child: ColoredBox(color: tokens.hairline),
+              ),
+              PanelSection(
+                flex: 3,
+                title: 'Trace',
+                child: TraceTimeline(events: _trace),
+              ),
+              SizedBox(
+                width: 1,
+                child: ColoredBox(color: tokens.hairline),
+              ),
+              PanelSection(
+                flex: 2,
+                title: 'History',
+                child: _buildHistoryPanel(),
+              ),
             ],
-            child: const Icon(Icons.more_horiz),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _buildPromptPanel(AsyncValue<List<WorkflowItem>> workflowsAsync) {
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          workflowsAsync.when(
-            data: (workflows) => DropdownButtonFormField<WorkflowItem?>(
-              isExpanded: true,
-              value: _selectedWorkflow,
-              decoration: const InputDecoration(labelText: 'Workflow'),
-              selectedItemBuilder: (context) => [
-                const Align(
+    final tokens = context.tokens;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        workflowsAsync.when(
+          data: (workflows) => DropdownButtonFormField<WorkflowItem?>(
+            isExpanded: true,
+            value: _selectedWorkflow,
+            decoration: const InputDecoration(labelText: 'Workflow'),
+            selectedItemBuilder: (context) => [
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Custom prompt',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              ...workflows.map(
+                (w) => Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Custom prompt',
+                    '${w.icon} ${w.name}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                ...workflows.map(
-                  (w) => Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      '${w.icon} ${w.name}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-              ],
-              items: [
-                const DropdownMenuItem(value: null, child: Text('Custom prompt')),
-                ...workflows.map(
-                  (w) => DropdownMenuItem(
-                    value: w,
-                    child: Text(
-                      '${w.icon} ${w.name}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-              ],
-              onChanged: (value) => setState(() => _selectedWorkflow = value),
-            ),
-            loading: () => const LinearProgressIndicator(),
-            error: (e, _) => Text('Failed to load workflows: $e'),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _promptController,
-            maxLines: 6,
-            decoration: const InputDecoration(
-              labelText: 'Prompt',
-              hintText: 'Ask the agent to do something…',
-            ),
-          ),
-          const SizedBox(height: 12),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            dense: true,
-            title: const Text('Attach clipboard'),
-            value: _attachClipboard,
-            onChanged: (v) => setState(() => _attachClipboard = v),
-          ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            dense: true,
-            title: const Text('Attach screenshot'),
-            value: _attachScreenshot,
-            onChanged: (v) => setState(() => _attachScreenshot = v),
-          ),
-          const Spacer(),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              OutlinedButton(
-                onPressed: () =>
-                    ref.read(agentSessionServiceProvider).clearTrace(),
-                child: const Text('Clear'),
-              ),
-              OutlinedButton(
-                onPressed: () =>
-                    ref.read(agentSessionServiceProvider).cancelRun(),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: _runPrompt,
-                child: const Text('Run'),
               ),
             ],
+            items: [
+              const DropdownMenuItem(
+                value: null,
+                child: Text('Custom prompt'),
+              ),
+              ...workflows.map(
+                (w) => DropdownMenuItem(
+                  value: w,
+                  child: Text(
+                    '${w.icon} ${w.name}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+            ],
+            onChanged: (value) => setState(() => _selectedWorkflow = value),
           ),
-        ],
-      ),
+          loading: () => const LinearProgressIndicator(),
+          error: (e, _) => Text('Failed to load workflows: $e'),
+        ),
+        SizedBox(height: tokens.spaceMd),
+        TextField(
+          controller: _promptController,
+          maxLines: 6,
+          decoration: const InputDecoration(
+            labelText: 'Prompt',
+            hintText: 'Ask the agent to do something…',
+          ),
+        ),
+        SizedBox(height: tokens.spaceSm),
+        ToggleRow(
+          title: 'Attach clipboard',
+          value: _attachClipboard,
+          onChanged: (v) => setState(() => _attachClipboard = v),
+        ),
+        ToggleRow(
+          title: 'Attach screenshot',
+          value: _attachScreenshot,
+          onChanged: (v) => setState(() => _attachScreenshot = v),
+        ),
+        const Spacer(),
+        Wrap(
+          spacing: tokens.spaceSm,
+          runSpacing: tokens.spaceSm,
+          children: [
+            OutlinedButton(
+              onPressed: () =>
+                  ref.read(agentSessionServiceProvider).clearTrace(),
+              child: const Text('Clear'),
+            ),
+            OutlinedButton(
+              onPressed: () =>
+                  ref.read(agentSessionServiceProvider).cancelRun(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: _runPrompt,
+              child: const Text('Run'),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
   Widget _buildHistoryPanel() {
     final history = ref.watch(runHistoryProvider);
+    final tokens = context.tokens;
+
     return history.when(
-      data: (entries) => ListView.builder(
-        padding: const EdgeInsets.all(12),
-        itemCount: entries.length,
-        itemBuilder: (context, index) {
-          final entry = entries[index];
-          return Material(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(8),
-            child: ListTile(
-              dense: true,
+      data: (entries) {
+        if (entries.isEmpty) {
+          return Center(
+            child: Text(
+              'Run history will appear here',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: tokens.textMuted,
+                  ),
+            ),
+          );
+        }
+        return ListView.separated(
+          padding: EdgeInsets.zero,
+          itemCount: entries.length,
+          separatorBuilder: (_, __) => SizedBox(height: tokens.spaceSm),
+          itemBuilder: (context, index) {
+            final entry = entries[index];
+            return GlassListRow(
               title: Text(
                 entry.workflowName,
                 maxLines: 1,
@@ -307,20 +228,11 @@ class _OverlayWindowState extends ConsumerState<OverlayWindow> {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              trailing: SizedBox(
-                width: 56,
-                child: Text(
-                  entry.status,
-                  style: const TextStyle(fontSize: 11),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.end,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
+              trailing: HistoryStatusChip(status: entry.status),
+            );
+          },
+        );
+      },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('$e')),
     );

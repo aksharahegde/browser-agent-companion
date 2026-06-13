@@ -2,12 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../core/overlay_window_service.dart';
 import '../../data/models/workflow.dart';
 import '../../shared/providers.dart';
+import '../../shared/theme.dart';
+import '../../shared/widgets/glass_list_row.dart';
+import '../../shared/widgets/overlay_subnav.dart';
+import '../../shared/widgets/toggle_row.dart';
 import '../overlay/overlay_window.dart';
 
 class WorkflowEditorPage extends ConsumerStatefulWidget {
-  const WorkflowEditorPage({super.key});
+  const WorkflowEditorPage({super.key, required this.onBack});
+
+  final VoidCallback onBack;
 
   @override
   ConsumerState<WorkflowEditorPage> createState() => _WorkflowEditorPageState();
@@ -17,88 +24,97 @@ class _WorkflowEditorPageState extends ConsumerState<WorkflowEditorPage> {
   @override
   Widget build(BuildContext context) {
     final workflows = ref.watch(workflowsProvider);
+    final tokens = context.tokens;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Workflows'),
-        actions: [
-          IconButton(
-            onPressed: () => _openEditor(context),
-            icon: const Icon(Icons.add),
-          ),
-        ],
-      ),
-      body: workflows.when(
-        data: (items) => ReorderableListView.builder(
-          padding: const EdgeInsets.all(12),
-          itemCount: items.length,
-          onReorder: (oldIndex, newIndex) async {
-            if (newIndex > oldIndex) newIndex -= 1;
-            final list = [...items];
-            final item = list.removeAt(oldIndex);
-            list.insert(newIndex, item);
-            final service = ref.read(workflowServiceProvider);
-            for (var i = 0; i < list.length; i++) {
-              await service.saveWorkflow(list[i].copyWith(sortOrder: i));
-            }
-            ref.invalidate(workflowsProvider);
-          },
-          itemBuilder: (context, index) {
-            final workflow = items[index];
-            return Material(
-              key: ValueKey(workflow.id),
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(8),
-              child: ListTile(
-                leading: Text(workflow.icon, style: const TextStyle(fontSize: 20)),
-                title: Text(
-                  workflow.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: Text(
-                  workflow.hotkey ?? 'No shortcut',
-                  style: const TextStyle(fontSize: 11),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                trailing: SizedBox(
-                  width: 120,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      IconButton(
-                        tooltip: 'Run',
-                        icon: const Icon(Icons.play_arrow),
-                        onPressed: () => ref
-                            .read(workflowServiceProvider)
-                            .runWorkflow(workflow),
-                      ),
-                      IconButton(
-                        tooltip: 'Edit',
-                        icon: const Icon(Icons.edit),
-                        onPressed: () => _openEditor(context, workflow: workflow),
-                      ),
-                      IconButton(
-                        tooltip: 'Delete',
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () async {
-                          await ref
-                              .read(workflowServiceProvider)
-                              .deleteWorkflow(workflow.id);
-                          ref.invalidate(workflowsProvider);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        OverlaySubnav(
+          title: 'Workflows',
+          onBack: widget.onBack,
+          onMinimize: () => hideOverlayWindow(ref),
+          actions: [
+            IconButton(
+              tooltip: 'New workflow',
+              onPressed: () => _openEditor(context),
+              icon: Icon(Icons.add, color: tokens.textMuted),
+            ),
+          ],
         ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
-      ),
+        Divider(height: 1, color: tokens.hairline),
+        Expanded(
+          child: workflows.when(
+            data: (items) => ReorderableListView.builder(
+              padding: EdgeInsets.all(tokens.spaceMd),
+              itemCount: items.length,
+              onReorder: (oldIndex, newIndex) async {
+                if (newIndex > oldIndex) newIndex -= 1;
+                final list = [...items];
+                final item = list.removeAt(oldIndex);
+                list.insert(newIndex, item);
+                final service = ref.read(workflowServiceProvider);
+                for (var i = 0; i < list.length; i++) {
+                  await service.saveWorkflow(list[i].copyWith(sortOrder: i));
+                }
+                ref.invalidate(workflowsProvider);
+              },
+              itemBuilder: (context, index) {
+                final workflow = items[index];
+                return Padding(
+                  key: ValueKey(workflow.id),
+                  padding: EdgeInsets.only(bottom: tokens.spaceSm),
+                  child: GlassListRow(
+                    leading: Text(
+                      workflow.icon,
+                      style: const TextStyle(fontSize: 18),
+                    ),
+                    title: Text(
+                      workflow.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(
+                      workflow.hotkey ?? 'No shortcut',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'Run',
+                          icon: Icon(Icons.play_arrow, color: tokens.textMuted),
+                          onPressed: () => ref
+                              .read(workflowServiceProvider)
+                              .runWorkflow(workflow),
+                        ),
+                        IconButton(
+                          tooltip: 'Edit',
+                          icon: Icon(Icons.edit_outlined, color: tokens.textMuted),
+                          onPressed: () =>
+                              _openEditor(context, workflow: workflow),
+                        ),
+                        IconButton(
+                          tooltip: 'Delete',
+                          icon: Icon(Icons.delete_outline, color: tokens.textMuted),
+                          onPressed: () async {
+                            await ref
+                                .read(workflowServiceProvider)
+                                .deleteWorkflow(workflow.id);
+                            ref.invalidate(workflowsProvider);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Center(child: Text('$e')),
+          ),
+        ),
+      ],
     );
   }
 
@@ -154,6 +170,8 @@ class _WorkflowDialogState extends ConsumerState<_WorkflowDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
+
     return AlertDialog(
       title: Text(widget.workflow == null ? 'New workflow' : 'Edit workflow'),
       content: SizedBox(
@@ -165,16 +183,19 @@ class _WorkflowDialogState extends ConsumerState<_WorkflowDialog> {
               controller: _nameController,
               decoration: const InputDecoration(labelText: 'Name'),
             ),
+            SizedBox(height: tokens.spaceSm),
             TextField(
               controller: _iconController,
               decoration: const InputDecoration(labelText: 'Icon'),
             ),
+            SizedBox(height: tokens.spaceSm),
             TextField(
               controller: _hotkeyController,
               decoration: const InputDecoration(
                 labelText: 'Hotkey (e.g. cmd+shift+1)',
               ),
             ),
+            SizedBox(height: tokens.spaceSm),
             TextField(
               controller: _promptController,
               maxLines: 5,
@@ -183,15 +204,13 @@ class _WorkflowDialogState extends ConsumerState<_WorkflowDialog> {
                 hintText: 'Use {{clipboard}} placeholder',
               ),
             ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Attach clipboard'),
+            ToggleRow(
+              title: 'Attach clipboard',
               value: _attachClipboard,
               onChanged: (v) => setState(() => _attachClipboard = v),
             ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Attach screenshot'),
+            ToggleRow(
+              title: 'Attach screenshot',
               value: _attachScreenshot,
               onChanged: (v) => setState(() => _attachScreenshot = v),
             ),

@@ -70,6 +70,40 @@ class AgentSessionService {
     }
   }
 
+  Future<void> ensureConnected(
+    AppSettings settings, {
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    if (settings.activeSessionId.isEmpty) {
+      throw StateError('No active session configured');
+    }
+
+    final client = _client;
+    final needsConfigure = client == null ||
+        client.sessionId != settings.activeSessionId ||
+        client.host != settings.agentHost ||
+        (client.authToken ?? '') !=
+            (settings.authToken.isEmpty ? '' : settings.authToken);
+
+    if (needsConfigure) {
+      await configure(settings);
+    } else if (client.status != ConnectionStatus.connected &&
+        client.status != ConnectionStatus.connecting &&
+        client.status != ConnectionStatus.reconnecting) {
+      await client.connect();
+    }
+
+    if (_client?.status == ConnectionStatus.connected) return;
+
+    try {
+      await connectionStatus
+          .firstWhere((status) => status == ConnectionStatus.connected)
+          .timeout(timeout);
+    } on TimeoutException {
+      throw StateError('Agent is not connected');
+    }
+  }
+
   Future<void> submitToolResult(
     String toolCallId,
     Map<String, dynamic> output,

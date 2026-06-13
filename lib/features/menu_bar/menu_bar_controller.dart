@@ -6,6 +6,7 @@ import '../../core/config.dart';
 import '../../core/overlay_window_service.dart';
 import '../../data/models/workflow.dart';
 import '../../shared/providers.dart';
+import '../../shared/widgets/glass_shell.dart';
 import '../overlay/overlay_window.dart';
 import '../sessions/sessions_page.dart';
 import '../settings/settings_page.dart';
@@ -106,7 +107,19 @@ class _MenuBarControllerState extends ConsumerState<MenuBarController>
           final workflow = workflows.where((w) => w.id == id).firstOrNull;
           if (workflow != null) {
             await showOverlayWindow(ref);
-            await ref.read(workflowServiceProvider).runWorkflow(workflow);
+            try {
+              await ref.read(workflowServiceProvider).runWorkflow(
+                    workflow,
+                    settings: ref.read(settingsProvider),
+                  );
+              ref.invalidate(runHistoryProvider);
+            } catch (error) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Run failed: $error')),
+                );
+              }
+            }
           }
         }
     }
@@ -133,6 +146,12 @@ class _MenuBarControllerState extends ConsumerState<MenuBarController>
     await showOverlayWindow(ref);
   }
 
+  void _backToOverlay() {
+    ref.read(settingsVisibleProvider.notifier).state = false;
+    ref.read(workflowsVisibleProvider.notifier).state = false;
+    ref.read(sessionsVisibleProvider.notifier).state = false;
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen(workflowsProvider, (_, __) {
@@ -143,58 +162,38 @@ class _MenuBarControllerState extends ConsumerState<MenuBarController>
     final showSettings = ref.watch(settingsVisibleProvider);
     final showWorkflows = ref.watch(workflowsVisibleProvider);
     final showSessions = ref.watch(sessionsVisibleProvider);
+    final overlayOpacity = ref.watch(settingsProvider).overlayOpacity;
+
+    if (!showOverlay) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SizedBox(
+          width: AppConfig.overlayDefaultWidth,
+          height: AppConfig.overlayDefaultHeight,
+          child: const SizedBox.shrink(),
+        ),
+      );
+    }
 
     Widget child = const OverlayWindow();
     if (showSettings) {
-      child = const SettingsPage();
+      child = SettingsPage(onBack: _backToOverlay);
     } else if (showWorkflows) {
-      child = const WorkflowEditorPage();
+      child = WorkflowEditorPage(onBack: _backToOverlay);
     } else if (showSessions) {
-      child = const SessionsPage();
+      child = SessionsPage(onBack: _backToOverlay);
     }
 
-    return SizedBox(
-      width: AppConfig.overlayDefaultWidth,
-      height: AppConfig.overlayDefaultHeight,
-      child: showOverlay
-          ? Scaffold(
-              body: Column(
-                children: [
-                  if (showSettings || showWorkflows || showSessions)
-                    Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        alignment: WrapAlignment.spaceBetween,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          TextButton(
-                            onPressed: () {
-                              ref
-                                  .read(settingsVisibleProvider.notifier)
-                                  .state = false;
-                              ref
-                                  .read(workflowsVisibleProvider.notifier)
-                                  .state = false;
-                              ref
-                                  .read(sessionsVisibleProvider.notifier)
-                                  .state = false;
-                            },
-                            child: const Text('Back to overlay'),
-                          ),
-                          TextButton(
-                            onPressed: () => hideOverlayWindow(ref),
-                            child: const Text('Minimize'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  Expanded(child: child),
-                ],
-              ),
-            )
-          : const SizedBox.shrink(),
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: SizedBox(
+        width: AppConfig.overlayDefaultWidth,
+        height: AppConfig.overlayDefaultHeight,
+        child: GlassShell(
+          opacity: overlayOpacity,
+          child: child,
+        ),
+      ),
     );
   }
 }

@@ -111,12 +111,15 @@ class WorkflowService {
     String? overridePrompt,
     AppSettings? settings,
   }) async {
+    final resolvedSettings = settings ?? await _database.loadSettings();
+    await _agentSessionService.ensureConnected(resolvedSettings);
+
     final prompt = await _resolvePrompt(
       overridePrompt ?? workflow.promptTemplate,
     );
-    final context = await _buildContext(workflow, settings);
+    final context = await _buildContext(workflow, resolvedSettings);
     final runId = _uuid.v4();
-    final sessionId = settings?.activeSessionId ?? '';
+    final sessionId = resolvedSettings.activeSessionId;
     final startedAt = DateTime.now();
 
     await _database.insertRunHistory(

@@ -2,108 +2,121 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/overlay_window_service.dart';
 import '../../data/models/agent_session.dart';
 import '../../shared/providers.dart';
+import '../../shared/theme.dart';
+import '../../shared/widgets/glass_list_row.dart';
+import '../../shared/widgets/overlay_subnav.dart';
 
 class SessionsPage extends ConsumerWidget {
-  const SessionsPage({super.key});
+  const SessionsPage({super.key, required this.onBack});
+
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sessions = ref.watch(sessionsProvider);
     final activeId = ref.watch(settingsProvider).activeSessionId;
     final dateFormat = DateFormat('MMM d, HH:mm');
+    final tokens = context.tokens;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Sessions'),
-        actions: [
-          IconButton(
-            tooltip: 'New session',
-            onPressed: () => _createSession(context, ref),
-            icon: const Icon(Icons.add),
-          ),
-        ],
-      ),
-      body: sessions.when(
-        data: (items) {
-          if (items.isEmpty) {
-            return Center(
-              child: FilledButton(
-                onPressed: () => _createSession(context, ref),
-                child: const Text('Create session'),
-              ),
-            );
-          }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        OverlaySubnav(
+          title: 'Sessions',
+          onBack: onBack,
+          onMinimize: () => hideOverlayWindow(ref),
+          actions: [
+            IconButton(
+              tooltip: 'New session',
+              onPressed: () => _createSession(context, ref),
+              icon: Icon(Icons.add, color: tokens.textMuted),
+            ),
+          ],
+        ),
+        Divider(height: 1, color: tokens.hairline),
+        Expanded(
+          child: sessions.when(
+            data: (items) {
+              if (items.isEmpty) {
+                return Center(
+                  child: FilledButton(
+                    onPressed: () => _createSession(context, ref),
+                    child: const Text('Create session'),
+                  ),
+                );
+              }
 
-          return ListView.separated(
-            padding: const EdgeInsets.all(12),
-            itemCount: items.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final session = items[index];
-              final isActive = session.id == activeId;
-              return Material(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(8),
-                child: ListTile(
-                  title: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          session.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (isActive)
-                        Container(
-                          margin: const EdgeInsets.only(left: 8),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .primary
-                                .withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
+              return ListView.separated(
+                padding: EdgeInsets.all(tokens.spaceMd),
+                itemCount: items.length,
+                separatorBuilder: (_, __) => SizedBox(height: tokens.spaceSm),
+                itemBuilder: (context, index) {
+                  final session = items[index];
+                  final isActive = session.id == activeId;
+                  return GlassListRow(
+                    onTap: () => _switchSession(context, ref, session),
+                    title: Row(
+                      children: [
+                        Expanded(
                           child: Text(
-                            'Active',
-                            style: Theme.of(context).textTheme.labelSmall,
+                            session.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                    ],
-                  ),
-                  subtitle: Text(
-                    'Last active ${dateFormat.format(session.lastActiveAt.toLocal())}',
-                    style: const TextStyle(fontSize: 11),
-                  ),
-                  onTap: () => _switchSession(context, ref, session),
-                  trailing: PopupMenuButton<String>(
-                    onSelected: (value) async {
-                      switch (value) {
-                        case 'rename':
-                          await _renameSession(context, ref, session);
-                        case 'delete':
-                          await _deleteSession(context, ref, session);
-                      }
-                    },
-                    itemBuilder: (context) => const [
-                      PopupMenuItem(value: 'rename', child: Text('Rename')),
-                      PopupMenuItem(value: 'delete', child: Text('Delete')),
-                    ],
-                  ),
-                ),
+                        if (isActive)
+                          Container(
+                            margin: const EdgeInsets.only(left: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .primary
+                                  .withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(
+                                tokens.radiusMd,
+                              ),
+                            ),
+                            child: Text(
+                              'Active',
+                              style: Theme.of(context).textTheme.labelSmall,
+                            ),
+                          ),
+                      ],
+                    ),
+                    subtitle: Text(
+                      'Last active ${dateFormat.format(session.lastActiveAt.toLocal())}',
+                    ),
+                    trailing: PopupMenuButton<String>(
+                      icon: Icon(Icons.more_horiz, color: tokens.textMuted),
+                      onSelected: (value) async {
+                        switch (value) {
+                          case 'rename':
+                            await _renameSession(context, ref, session);
+                          case 'delete':
+                            await _deleteSession(context, ref, session);
+                        }
+                      },
+                      itemBuilder: (context) => const [
+                        PopupMenuItem(value: 'rename', child: Text('Rename')),
+                        PopupMenuItem(value: 'delete', child: Text('Delete')),
+                      ],
+                    ),
+                  );
+                },
               );
             },
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
-      ),
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Center(child: Text('$e')),
+          ),
+        ),
+      ],
     );
   }
 
@@ -130,29 +143,10 @@ class SessionsPage extends ConsumerWidget {
     WidgetRef ref,
     AgentSession session,
   ) async {
-    final controller = TextEditingController(text: session.title);
     final title = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Rename session'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Title'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+      builder: (context) => _RenameSessionDialog(initialTitle: session.title),
     );
-    controller.dispose();
     if (title == null) return;
 
     await ref.read(sessionServiceProvider).renameSession(session.id, title);
@@ -188,5 +182,52 @@ class SessionsPage extends ConsumerWidget {
     await ref.read(sessionServiceProvider).deleteSession(session.id);
     ref.invalidate(sessionsProvider);
     ref.invalidate(runHistoryProvider);
+  }
+}
+
+class _RenameSessionDialog extends StatefulWidget {
+  const _RenameSessionDialog({required this.initialTitle});
+
+  final String initialTitle;
+
+  @override
+  State<_RenameSessionDialog> createState() => _RenameSessionDialogState();
+}
+
+class _RenameSessionDialogState extends State<_RenameSessionDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialTitle);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Rename session'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        decoration: const InputDecoration(labelText: 'Title'),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, _controller.text),
+          child: const Text('Save'),
+        ),
+      ],
+    );
   }
 }
