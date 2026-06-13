@@ -56,6 +56,7 @@ class RunHistoryEntry {
     required this.workflowName,
     required this.status,
     required this.startedAt,
+    this.sessionId,
     this.completedAt,
     this.summary = '',
     this.prompt = '',
@@ -63,6 +64,7 @@ class RunHistoryEntry {
 
   final String id;
   final String? workflowId;
+  final String? sessionId;
   final String workflowName;
   final String status;
   final DateTime startedAt;

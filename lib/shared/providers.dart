@@ -4,12 +4,15 @@ import 'package:window_manager/window_manager.dart';
 import '../core/app_lifecycle_service.dart';
 import '../core/permissions.dart';
 import '../data/database/app_database.dart';
+import '../data/models/agent_session.dart';
 import '../data/models/app_settings.dart';
+import '../data/models/workflow.dart';
 import '../services/agent/agent_session_service.dart';
 import '../services/local/clipboard_service.dart';
 import '../services/local/file_service.dart';
 import '../services/local/local_tool_executor.dart';
 import '../services/local/screenshot_service.dart';
+import '../services/sessions/session_service.dart';
 import '../services/workflows/workflow_service.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) {
@@ -35,6 +38,32 @@ final localToolExecutorProvider = Provider((ref) {
     screenshotService: ref.watch(screenshotServiceProvider),
     fileService: ref.watch(fileServiceProvider),
   );
+});
+
+final sessionServiceProvider = Provider<SessionService>((ref) {
+  return SessionService(
+    database: ref.watch(databaseProvider),
+    agentSessionService: ref.watch(agentSessionServiceProvider),
+    readSettings: () => ref.read(settingsProvider),
+    updateSettings: (settings) =>
+        ref.read(settingsProvider.notifier).update(settings),
+  );
+});
+
+final sessionsProvider = FutureProvider<List<AgentSession>>((ref) async {
+  return ref.watch(sessionServiceProvider).loadSessions();
+});
+
+final activeSessionProvider = FutureProvider<AgentSession?>((ref) async {
+  ref.watch(settingsProvider);
+  return ref.watch(sessionServiceProvider).getActiveSession();
+});
+
+final runHistoryProvider = FutureProvider<List<RunHistoryEntry>>((ref) async {
+  final settings = ref.watch(settingsProvider);
+  if (settings.activeSessionId.isEmpty) return const [];
+  final db = ref.watch(databaseProvider);
+  return db.loadRunHistory(sessionId: settings.activeSessionId);
 });
 
 final workflowServiceProvider = Provider((ref) {
@@ -80,6 +109,7 @@ final appLifecycleServiceProvider = Provider<AppLifecycleService>((ref) {
       ref.read(overlayVisibleProvider.notifier).state = false;
       ref.read(settingsVisibleProvider.notifier).state = false;
       ref.read(workflowsVisibleProvider.notifier).state = false;
+      ref.read(sessionsVisibleProvider.notifier).state = false;
       await windowManager.hide();
     },
   );
@@ -88,3 +118,4 @@ final appLifecycleServiceProvider = Provider<AppLifecycleService>((ref) {
 final overlayVisibleProvider = StateProvider<bool>((ref) => false);
 final settingsVisibleProvider = StateProvider<bool>((ref) => false);
 final workflowsVisibleProvider = StateProvider<bool>((ref) => false);
+final sessionsVisibleProvider = StateProvider<bool>((ref) => false);

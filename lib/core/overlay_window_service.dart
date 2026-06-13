@@ -15,5 +15,6 @@ Future<void> hideOverlayWindow(WidgetRef ref) async {
   ref.read(overlayVisibleProvider.notifier).state = false;
   ref.read(settingsVisibleProvider.notifier).state = false;
   ref.read(workflowsVisibleProvider.notifier).state = false;
+  ref.read(sessionsVisibleProvider.notifier).state = false;
   await windowManager.hide();
 }

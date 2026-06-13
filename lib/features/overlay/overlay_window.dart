@@ -77,6 +77,9 @@ class _OverlayWindowState extends ConsumerState<OverlayWindow> {
   }
 
   Widget _buildTitleBar(BuildContext context, String host) {
+    final sessionsAsync = ref.watch(sessionsProvider);
+    final activeId = ref.watch(settingsProvider).activeSessionId;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Row(
@@ -87,6 +90,75 @@ class _OverlayWindowState extends ConsumerState<OverlayWindow> {
               style: Theme.of(context).textTheme.titleLarge,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            flex: 2,
+            child: sessionsAsync.when(
+              data: (sessions) {
+                if (sessions.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                final active = sessions.firstWhere(
+                  (s) => s.id == activeId,
+                  orElse: () => sessions.first,
+                );
+                return PopupMenuButton<String>(
+                  tooltip: 'Session',
+                  onSelected: (value) async {
+                    if (value == '__new__') {
+                      await ref
+                          .read(sessionServiceProvider)
+                          .createAndSwitchSession();
+                    } else {
+                      await ref
+                          .read(sessionServiceProvider)
+                          .switchActiveSession(value);
+                    }
+                    ref.invalidate(sessionsProvider);
+                    ref.invalidate(runHistoryProvider);
+                    if (mounted) setState(() => _promptController.clear());
+                  },
+                  itemBuilder: (context) => [
+                    ...sessions.map(
+                      (s) => PopupMenuItem(
+                        value: s.id,
+                        child: Text(
+                          s.id == activeId ? '✓ ${s.title}' : s.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    const PopupMenuDivider(),
+                    const PopupMenuItem(
+                      value: '__new__',
+                      child: Text('New session'),
+                    ),
+                  ],
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          active.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ),
+                      const Icon(Icons.arrow_drop_down, size: 20),
+                    ],
+                  ),
+                );
+              },
+              loading: () => const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              error: (_, __) => const SizedBox.shrink(),
             ),
           ),
           const SizedBox(width: 8),
@@ -121,8 +193,29 @@ class _OverlayWindowState extends ConsumerState<OverlayWindow> {
         children: [
           workflowsAsync.when(
             data: (workflows) => DropdownButtonFormField<WorkflowItem?>(
+              isExpanded: true,
               value: _selectedWorkflow,
               decoration: const InputDecoration(labelText: 'Workflow'),
+              selectedItemBuilder: (context) => [
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Custom prompt',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                ...workflows.map(
+                  (w) => Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      '${w.icon} ${w.name}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ],
               items: [
                 const DropdownMenuItem(value: null, child: Text('Custom prompt')),
                 ...workflows.map(
@@ -235,10 +328,17 @@ class _OverlayWindowState extends ConsumerState<OverlayWindow> {
 
   Future<void> _runPrompt() async {
     final workflowService = ref.read(workflowServiceProvider);
+    final sessionService = ref.read(sessionServiceProvider);
     final settings = ref.read(settingsProvider);
+    final sessionId = settings.activeSessionId;
+    if (sessionId.isEmpty) return;
 
     try {
+      String promptForTitle = _promptController.text.trim();
       if (_selectedWorkflow != null) {
+        promptForTitle = _promptController.text.isEmpty
+            ? _selectedWorkflow!.promptTemplate
+            : _promptController.text;
         await workflowService.runWorkflow(
           _selectedWorkflow!,
           overridePrompt: _promptController.text.isEmpty
@@ -252,6 +352,7 @@ class _OverlayWindowState extends ConsumerState<OverlayWindow> {
       } else {
         final prompt = _promptController.text.trim();
         if (prompt.isEmpty) return;
+        promptForTitle = prompt;
         final temp = WorkflowItem(
           id: 'custom',
           name: 'Custom',
@@ -265,6 +366,9 @@ class _OverlayWindowState extends ConsumerState<OverlayWindow> {
         );
         await workflowService.runWorkflow(temp, settings: settings);
       }
+      await sessionService.maybeAutoTitle(sessionId, promptForTitle);
+      await sessionService.touchActiveSession();
+      ref.invalidate(sessionsProvider);
       ref.invalidate(runHistoryProvider);
     } catch (error) {
       if (mounted) {
@@ -280,9 +384,4 @@ final workflowsProvider = FutureProvider<List<WorkflowItem>>((ref) async {
   final service = ref.watch(workflowServiceProvider);
   await service.seedDefaultsIfEmpty();
   return service.loadWorkflows();
-});
-
-final runHistoryProvider = FutureProvider((ref) async {
-  final db = ref.watch(databaseProvider);
-  return db.loadRunHistory();
 });

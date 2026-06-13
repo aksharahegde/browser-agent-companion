@@ -162,7 +162,6 @@ class AgentWebSocketClient {
           message.cast<String, dynamic>();
       _latestState = state;
       _stateController.add(state);
-      _deriveTraceFromState(state);
       return;
     }
 
@@ -193,51 +192,6 @@ class AgentWebSocketClient {
       completer.complete(message['result']);
     } else {
       completer.completeError(message['error'] ?? 'RPC failed');
-    }
-  }
-
-  void _deriveTraceFromState(Map<String, dynamic> state) {
-    final status = state['status'] as String?;
-    if (status != null) {
-      _emitTrace(TraceEventType.status, 'Agent status: $status');
-    }
-
-    final messages = state['messages'];
-    if (messages is List && messages.isNotEmpty) {
-      final last = messages.last;
-      if (last is Map) {
-        final role = last['role'] as String? ?? 'agent';
-        final content = last['content'];
-        final text = content is String
-            ? content
-            : content is List
-                ? content
-                    .whereType<Map>()
-                    .map((part) => part['text'])
-                    .whereType<String>()
-                    .join('\n')
-                : content?.toString() ?? '';
-        if (text.isNotEmpty) {
-          _emitTrace(
-            role == 'user'
-                ? TraceEventType.userPrompt
-                : TraceEventType.agentResponse,
-            text,
-          );
-        }
-      }
-    }
-
-    final activeTools = state['activeToolCalls'];
-    if (activeTools is List) {
-      for (final tool in activeTools) {
-        if (tool is Map) {
-          _emitTrace(
-            TraceEventType.serverToolCall,
-            'Server tool: ${tool['name'] ?? tool['toolName'] ?? 'unknown'}',
-          );
-        }
-      }
     }
   }
 

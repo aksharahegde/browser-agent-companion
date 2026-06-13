@@ -21,15 +21,19 @@ class AgentSessionService {
 
   Future<void> configure(AppSettings settings) async {
     await disconnect();
-    if (settings.sessionId.isEmpty) return;
+    if (settings.activeSessionId.isEmpty) return;
+
+    _traceEvents.clear();
+    _traceController.add(const []);
 
     _client = AgentWebSocketClient(
       host: settings.agentHost,
-      sessionId: settings.sessionId,
+      sessionId: settings.activeSessionId,
       authToken: settings.authToken.isEmpty ? null : settings.authToken,
     );
 
     _client!.onConnectionStatus.listen(_statusController.add);
+    _client!.onStateUpdate.listen(_hydrateTraceFromState);
     _client!.onTraceEvent.listen((event) {
       _traceEvents.add(event);
       _traceController.add(List.unmodifiable(_traceEvents));
@@ -50,10 +54,6 @@ class AgentSessionService {
     AgentRunContext context, {
     void Function(Object error)? onError,
   }) async {
-    _traceEvents.clear();
-    _traceController.add(const []);
-    _client?.onTraceEvent; // ensure stream is warm
-
     final client = _client;
     if (client == null || client.status != ConnectionStatus.connected) {
       throw StateError('Agent is not connected');
@@ -100,6 +100,78 @@ class AgentSessionService {
     final handler = onToolCallRequested;
     if (handler == null) return;
     await handler(event);
+  }
+
+  void _hydrateTraceFromState(Map<String, dynamic> state) {
+    _traceEvents
+      ..clear()
+      ..addAll(buildTraceFromState(state));
+    _traceController.add(List.unmodifiable(_traceEvents));
+  }
+
+  static List<TraceEvent> buildTraceFromState(Map<String, dynamic> state) {
+    final events = <TraceEvent>[];
+    var seq = 0;
+
+    TraceEvent add(TraceEventType type, String message) {
+      return TraceEvent(
+        id: 'state-${seq++}',
+        type: type,
+        message: message,
+        timestamp: DateTime.now(),
+      );
+    }
+
+    final status = state['status'] as String?;
+    if (status != null) {
+      events.add(add(TraceEventType.status, 'Agent status: $status'));
+    }
+
+    final messages = state['messages'];
+    if (messages is List) {
+      for (final message in messages) {
+        if (message is! Map) continue;
+        final role = message['role'] as String? ?? 'agent';
+        final text = _messageText(message['content']);
+        if (text.isEmpty) continue;
+        events.add(
+          add(
+            role == 'user'
+                ? TraceEventType.userPrompt
+                : TraceEventType.agentResponse,
+            text,
+          ),
+        );
+      }
+    }
+
+    final activeTools = state['activeToolCalls'];
+    if (activeTools is List) {
+      for (final tool in activeTools) {
+        if (tool is Map) {
+          events.add(
+            add(
+              TraceEventType.serverToolCall,
+              'Server tool: ${tool['name'] ?? tool['toolName'] ?? 'unknown'}',
+            ),
+          );
+        }
+      }
+    }
+
+    return events;
+  }
+
+  static String _messageText(Object? content) {
+    if (content is String) return content;
+    if (content is List) {
+      return content
+          .whereType<Map>()
+          .map((part) => part['text'])
+          .whereType<String>()
+          .join('\n');
+    }
+    return content?.toString() ?? '';
   }
 
   void dispose() {
