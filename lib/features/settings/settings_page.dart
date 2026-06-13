@@ -77,7 +77,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 controller: _tokenController,
                 obscureText: true,
                 decoration:
-                    const InputDecoration(labelText: 'Auth token (optional)'),
+                    const InputDecoration(labelText: 'Auth token (Keychain)'),
               ),
               SizedBox(height: tokens.spaceLg),
               _SectionHeading(title: 'Session'),

@@ -58,7 +58,7 @@ class AppDatabase extends _$AppDatabase {
       overlayFontSize: double.tryParse(map['overlayFontSize'] ?? '') ?? 13.0,
       launchAtLogin: map['launchAtLogin'] == 'true',
       defaultAttachScreenshot: map['defaultAttachScreenshot'] == 'true',
-      defaultAttachClipboard: map['defaultAttachClipboard'] != 'false',
+      defaultAttachClipboard: map['defaultAttachClipboard'] == 'true',
       overlayX: double.tryParse(map['overlayX'] ?? ''),
       overlayY: double.tryParse(map['overlayY'] ?? ''),
       overlayWidth: double.tryParse(map['overlayWidth'] ?? ''),
@@ -70,7 +70,6 @@ class AppDatabase extends _$AppDatabase {
     final entries = <String, String>{
       'agentHost': settings.agentHost,
       'activeSessionId': settings.activeSessionId,
-      'authToken': settings.authToken,
       'overlayOpacity': settings.overlayOpacity.toString(),
       'overlayFontSize': settings.overlayFontSize.toString(),
       'launchAtLogin': settings.launchAtLogin.toString(),
@@ -93,6 +92,11 @@ class AppDatabase extends _$AppDatabase {
         );
       }
     });
+  }
+
+  Future<void> clearLegacyAuthTokenSetting() async {
+    await (delete(settingsTable)..where((t) => t.key.equals('authToken')))
+        .go();
   }
 
   Future<List<AgentSession>> loadSessions() async {
