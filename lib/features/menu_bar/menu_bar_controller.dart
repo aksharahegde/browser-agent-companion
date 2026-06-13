@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tray_manager/tray_manager.dart';
-import 'package:window_manager/window_manager.dart';
 
 import '../../core/config.dart';
+import '../../core/overlay_window_service.dart';
 import '../../data/models/workflow.dart';
 import '../../shared/providers.dart';
 import '../overlay/overlay_window.dart';
@@ -84,7 +84,7 @@ class _MenuBarControllerState extends ConsumerState<MenuBarController>
   void onTrayMenuItemClick(MenuItem menuItem) async {
     switch (menuItem.key) {
       case 'overlay':
-        await _showOverlay();
+        await showOverlayWindow(ref);
       case 'workflows':
         await _showWorkflows();
       case 'settings':
@@ -98,38 +98,23 @@ class _MenuBarControllerState extends ConsumerState<MenuBarController>
               await ref.read(workflowServiceProvider).loadWorkflows();
           final workflow = workflows.where((w) => w.id == id).firstOrNull;
           if (workflow != null) {
-            await _showOverlay();
+            await showOverlayWindow(ref);
             await ref.read(workflowServiceProvider).runWorkflow(workflow);
           }
         }
     }
   }
 
-  Future<void> _showOverlay() async {
-    ref.read(overlayVisibleProvider.notifier).state = true;
-    await windowManager.setAsFrameless();
-    await windowManager.show();
-    await windowManager.focus();
-    await windowManager.setAlwaysOnTop(true);
-  }
-
-  Future<void> _hideOverlay() async {
-    ref.read(overlayVisibleProvider.notifier).state = false;
-    ref.read(settingsVisibleProvider.notifier).state = false;
-    ref.read(workflowsVisibleProvider.notifier).state = false;
-    await windowManager.hide();
-  }
-
   Future<void> _showSettings() async {
     ref.read(settingsVisibleProvider.notifier).state = true;
     ref.read(workflowsVisibleProvider.notifier).state = false;
-    await _showOverlay();
+    await showOverlayWindow(ref);
   }
 
   Future<void> _showWorkflows() async {
     ref.read(workflowsVisibleProvider.notifier).state = true;
     ref.read(settingsVisibleProvider.notifier).state = false;
-    await _showOverlay();
+    await showOverlayWindow(ref);
   }
 
   @override
@@ -177,7 +162,7 @@ class _MenuBarControllerState extends ConsumerState<MenuBarController>
                             child: const Text('Back to overlay'),
                           ),
                           TextButton(
-                            onPressed: _hideOverlay,
+                            onPressed: () => hideOverlayWindow(ref),
                             child: const Text('Minimize'),
                           ),
                         ],
@@ -187,7 +172,7 @@ class _MenuBarControllerState extends ConsumerState<MenuBarController>
                 ],
               ),
             )
-          : const ColoredBox(color: Color(0xFF1A1B1E)),
+          : const SizedBox.shrink(),
     );
   }
 }

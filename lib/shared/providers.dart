@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../core/app_lifecycle_service.dart';
 import '../core/permissions.dart';
@@ -70,7 +71,16 @@ final appLifecycleServiceProvider = Provider<AppLifecycleService>((ref) {
     agentSessionService: ref.watch(agentSessionServiceProvider),
     workflowService: ref.watch(workflowServiceProvider),
     onBeforeQuit: () async {
-      await ref.read(databaseProvider).close();
+      await ref.read(databaseProvider).close().timeout(
+            const Duration(seconds: 1),
+            onTimeout: () {},
+          );
+    },
+    hideOverlay: () async {
+      ref.read(overlayVisibleProvider.notifier).state = false;
+      ref.read(settingsVisibleProvider.notifier).state = false;
+      ref.read(workflowsVisibleProvider.notifier).state = false;
+      await windowManager.hide();
     },
   );
 });
