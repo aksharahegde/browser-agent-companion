@@ -25,6 +25,7 @@ dependencies:
   launch_at_startup: ^0.5.1
   mime: ^2.0.0
   image: ^4.5.2
+  flutter_secure_storage: ^10.3.1
 
 dev_dependencies:
   flutter_test:

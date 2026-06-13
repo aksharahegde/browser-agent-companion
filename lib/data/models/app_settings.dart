@@ -7,7 +7,7 @@ class AppSettings {
     this.overlayFontSize = 13.0,
     this.launchAtLogin = false,
     this.defaultAttachScreenshot = false,
-    this.defaultAttachClipboard = true,
+    this.defaultAttachClipboard = false,
     this.overlayX,
     this.overlayY,
     this.overlayWidth,

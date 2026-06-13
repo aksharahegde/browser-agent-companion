@@ -9,6 +9,8 @@ import '../../data/models/workflow.dart';
 import '../agent/agent_session_service.dart';
 import '../local/clipboard_service.dart';
 import '../local/screenshot_service.dart';
+import '../security/auth_token_store.dart';
+import '../security/run_history_redaction.dart';
 
 class WorkflowService {
   WorkflowService({
@@ -16,15 +18,18 @@ class WorkflowService {
     required AgentSessionService agentSessionService,
     required ClipboardService clipboardService,
     required ScreenshotService screenshotService,
+    required AuthTokenStore authTokenStore,
   })  : _database = database,
         _agentSessionService = agentSessionService,
         _clipboardService = clipboardService,
-        _screenshotService = screenshotService;
+        _screenshotService = screenshotService,
+        _authTokenStore = authTokenStore;
 
   final AppDatabase _database;
   final AgentSessionService _agentSessionService;
   final ClipboardService _clipboardService;
   final ScreenshotService _screenshotService;
+  final AuthTokenStore _authTokenStore;
   final _uuid = const Uuid();
   final _registeredHotkeys = <String, HotKey>{};
 
@@ -111,13 +116,22 @@ class WorkflowService {
     String? overridePrompt,
     AppSettings? settings,
   }) async {
-    final resolvedSettings = settings ?? await _database.loadSettings();
+    final resolvedSettings = await _resolveSettings(settings);
     await _agentSessionService.ensureConnected(resolvedSettings);
 
-    final prompt = await _resolvePrompt(
-      overridePrompt ?? workflow.promptTemplate,
-    );
+    final template = overridePrompt ?? workflow.promptTemplate;
+    final prompt = await _resolvePrompt(template);
     final context = await _buildContext(workflow, resolvedSettings);
+    final storedPrompt = redactStoredRunPrompt(
+      prompt: prompt,
+      includesSensitiveAttachments: runIncludesSensitiveAttachments(
+        flags: AgentRunContextFlags(
+          attachedClipboard: context.clipboardText?.isNotEmpty ?? false,
+          attachedScreenshot: context.screenshotBase64?.isNotEmpty ?? false,
+          promptUsedClipboardTemplate: template.contains('{{clipboard}}'),
+        ),
+      ),
+    );
     final runId = _uuid.v4();
     final sessionId = resolvedSettings.activeSessionId;
     final startedAt = DateTime.now();
@@ -130,7 +144,7 @@ class WorkflowService {
         workflowName: workflow.name,
         status: RunStatus.running.name,
         startedAt: startedAt,
-        prompt: prompt,
+        prompt: storedPrompt,
       ),
     );
 
@@ -145,7 +159,7 @@ class WorkflowService {
           status: RunStatus.completed.name,
           startedAt: startedAt,
           completedAt: DateTime.now(),
-          prompt: prompt,
+          prompt: storedPrompt,
           summary: 'Completed',
         ),
       );
@@ -159,12 +173,19 @@ class WorkflowService {
           status: RunStatus.failed.name,
           startedAt: startedAt,
           completedAt: DateTime.now(),
-          prompt: prompt,
+          prompt: storedPrompt,
           summary: error.toString(),
         ),
       );
       rethrow;
     }
+  }
+
+  Future<AppSettings> _resolveSettings(AppSettings? settings) async {
+    if (settings != null) return settings;
+    final dbSettings = await _database.loadSettings();
+    final token = await _authTokenStore.read();
+    return dbSettings.copyWith(authToken: token);
   }
 
   Future<String> _resolvePrompt(String template) async {

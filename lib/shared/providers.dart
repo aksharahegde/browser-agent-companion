@@ -12,6 +12,7 @@ import '../services/local/clipboard_service.dart';
 import '../services/local/file_service.dart';
 import '../services/local/local_tool_executor.dart';
 import '../services/local/screenshot_service.dart';
+import '../services/security/auth_token_store.dart';
 import '../services/security/tool_approval_service.dart';
 import '../services/sessions/session_service.dart';
 import '../services/workflows/workflow_service.dart';
@@ -26,6 +27,10 @@ final clipboardServiceProvider = Provider((ref) => ClipboardService());
 final screenshotServiceProvider = Provider((ref) => ScreenshotService());
 final fileServiceProvider = Provider((ref) => FileService());
 final permissionsServiceProvider = Provider((ref) => PermissionsService());
+
+final authTokenStoreProvider = Provider<AuthTokenStore>((ref) {
+  return SecureAuthTokenStore();
+});
 
 final agentSessionServiceProvider = Provider((ref) {
   final service = AgentSessionService();
@@ -84,6 +89,7 @@ final workflowServiceProvider = Provider((ref) {
     agentSessionService: ref.watch(agentSessionServiceProvider),
     clipboardService: ref.watch(clipboardServiceProvider),
     screenshotService: ref.watch(screenshotServiceProvider),
+    authTokenStore: ref.watch(authTokenStoreProvider),
   );
 });
 
@@ -95,12 +101,27 @@ class SettingsNotifier extends Notifier<AppSettings> {
   AppSettings build() => AppSettings.defaults;
 
   Future<void> load() async {
-    state = await ref.read(databaseProvider).loadSettings();
+    final database = ref.read(databaseProvider);
+    final tokenStore = ref.read(authTokenStoreProvider);
+    final dbSettings = await database.loadSettings();
+    final token = await migrateLegacyAuthToken(
+      legacyToken: dbSettings.authToken,
+      store: tokenStore,
+    );
+    if (dbSettings.authToken.isNotEmpty) {
+      await database.saveSettings(dbSettings.copyWith(authToken: ''));
+      await database.clearLegacyAuthTokenSetting();
+    }
+    state = dbSettings.copyWith(authToken: token);
   }
 
   Future<void> update(AppSettings settings) async {
+    await ref.read(authTokenStoreProvider).write(settings.authToken);
     state = settings;
-    await ref.read(databaseProvider).saveSettings(settings);
+    await ref.read(databaseProvider).saveSettings(
+          settings.copyWith(authToken: ''),
+        );
+    await ref.read(databaseProvider).clearLegacyAuthTokenSetting();
   }
 }
 

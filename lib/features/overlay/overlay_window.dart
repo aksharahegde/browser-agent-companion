@@ -23,7 +23,7 @@ class OverlayWindow extends ConsumerStatefulWidget {
 class _OverlayWindowState extends ConsumerState<OverlayWindow> {
   final _promptController = TextEditingController();
   bool _attachScreenshot = false;
-  bool _attachClipboard = true;
+  bool _attachClipboard = false;
   WorkflowItem? _selectedWorkflow;
   String? _selectedHistoryId;
   List<TraceEvent> _trace = [];
@@ -33,10 +33,13 @@ class _OverlayWindowState extends ConsumerState<OverlayWindow> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final settings = ref.read(settingsProvider);
       final agent = ref.read(agentSessionServiceProvider);
       setState(() {
         _connectionStatus = agent.status;
         _trace = agent.currentTrace;
+        _attachScreenshot = settings.defaultAttachScreenshot;
+        _attachClipboard = settings.defaultAttachClipboard;
       });
       agent.connectionStatus.listen((status) {
         if (mounted) setState(() => _connectionStatus = status);
@@ -173,6 +176,13 @@ class _OverlayWindowState extends ConsumerState<OverlayWindow> {
           value: _attachScreenshot,
           onChanged: (v) => setState(() => _attachScreenshot = v),
         ),
+        if (_attachClipboard || _attachScreenshot) ...[
+          SizedBox(height: tokens.spaceSm),
+          _SensitiveAttachmentBanner(
+            attachClipboard: _attachClipboard,
+            attachScreenshot: _attachScreenshot,
+          ),
+        ],
         const Spacer(),
         Wrap(
           spacing: tokens.spaceSm,
@@ -345,6 +355,40 @@ class _OverlayWindowState extends ConsumerState<OverlayWindow> {
         showAppSnackBar('Run failed: $error');
       }
     }
+  }
+}
+
+class _SensitiveAttachmentBanner extends StatelessWidget {
+  const _SensitiveAttachmentBanner({
+    required this.attachClipboard,
+    required this.attachScreenshot,
+  });
+
+  final bool attachClipboard;
+  final bool attachScreenshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final parts = <String>[
+      if (attachClipboard) 'clipboard',
+      if (attachScreenshot) 'screenshot',
+    ];
+
+    return DecoratedBox(
+      decoration: tokens.surfaceDecoration().copyWith(
+            border: Border.all(color: const Color(0xFFB7791F)),
+          ),
+      child: Padding(
+        padding: EdgeInsets.all(tokens.spaceSm + 2),
+        child: Text(
+          'This run will send ${parts.join(' and ')} data to the agent.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: const Color(0xFFEAB308),
+              ),
+        ),
+      ),
+    );
   }
 }
 
