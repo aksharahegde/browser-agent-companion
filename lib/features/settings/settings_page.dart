@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 
 import '../../data/models/app_settings.dart';
+import '../../shared/app_messenger.dart';
 import '../../shared/providers.dart';
 import '../../shared/theme.dart';
 import '../../shared/widgets/glass_list_row.dart';
@@ -100,11 +101,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                             Clipboard.setData(
                               ClipboardData(text: settings.activeSessionId),
                             );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Session ID copied'),
-                              ),
-                            );
+                            showAppSnackBar('Session ID copied');
                           },
                         ),
                 ),
@@ -218,9 +215,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     await _save(updated);
     await ref.read(agentSessionServiceProvider).configure(updated);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Settings saved')),
-      );
+      showAppSnackBar('Settings saved');
     }
   }
 }

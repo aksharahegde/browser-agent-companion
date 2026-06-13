@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/trace_event.dart';
 import '../../data/models/workflow.dart';
 import '../../core/overlay_window_service.dart';
+import '../../shared/app_messenger.dart';
 import '../../shared/providers.dart';
 import '../../shared/theme.dart';
 import '../../shared/widgets/glass_list_row.dart';
@@ -32,6 +33,10 @@ class _OverlayWindowState extends ConsumerState<OverlayWindow> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final agent = ref.read(agentSessionServiceProvider);
+      setState(() {
+        _connectionStatus = agent.status;
+        _trace = agent.currentTrace;
+      });
       agent.connectionStatus.listen((status) {
         if (mounted) setState(() => _connectionStatus = status);
       });
@@ -279,9 +284,7 @@ class _OverlayWindowState extends ConsumerState<OverlayWindow> {
       ref.invalidate(runHistoryProvider);
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Run failed: $error')),
-        );
+        showAppSnackBar('Run failed: $error');
       }
     }
   }

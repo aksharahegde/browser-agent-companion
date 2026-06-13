@@ -2,51 +2,104 @@ import 'dart:async';
 
 import '../../data/models/app_settings.dart';
 import '../../data/models/trace_event.dart';
+import 'agent_backend_probe.dart';
+import 'agent_http_run_client.dart';
 import 'agent_websocket_client.dart';
+
+enum _AgentBackend { none, httpRun, websocket }
 
 class AgentSessionService {
   AgentSessionService();
 
-  AgentWebSocketClient? _client;
+  AgentWebSocketClient? _wsClient;
+  AgentHttpRunClient? _httpClient;
+  _AgentBackend _backend = _AgentBackend.none;
+  String? _configuredHost;
+  String? _configuredSessionId;
+  String? _configuredAuthToken;
+
   final _traceEvents = <TraceEvent>[];
   final _traceController = StreamController<List<TraceEvent>>.broadcast();
   final _statusController =
       StreamController<ConnectionStatus>.broadcast();
+  final _subscriptions = <StreamSubscription<dynamic>>[];
 
   Stream<List<TraceEvent>> get traceEvents => _traceController.stream;
   Stream<ConnectionStatus> get connectionStatus => _statusController.stream;
-  ConnectionStatus get status =>
-      _client?.status ?? ConnectionStatus.disconnected;
+  ConnectionStatus get status {
+    return _httpClient?.status ??
+        _wsClient?.status ??
+        ConnectionStatus.disconnected;
+  }
+
   List<TraceEvent> get currentTrace => List.unmodifiable(_traceEvents);
 
   Future<void> configure(AppSettings settings) async {
     await disconnect();
-    if (settings.activeSessionId.isEmpty) return;
 
     _traceEvents.clear();
-    _traceController.add(const []);
+    _emitTrace(const []);
 
-    _client = AgentWebSocketClient(
+    _configuredHost = settings.agentHost;
+    _configuredSessionId = settings.activeSessionId;
+    _configuredAuthToken =
+        settings.authToken.isEmpty ? null : settings.authToken;
+
+    final useHttpRun = await probeHttpRunBackend(settings.agentHost);
+    if (useHttpRun) {
+      _backend = _AgentBackend.httpRun;
+      _httpClient = AgentHttpRunClient(host: settings.agentHost);
+      _subscriptions.add(_httpClient!.onConnectionStatus.listen(_emitStatus));
+      _subscriptions.add(
+        _httpClient!.onTraceEvent.listen((event) {
+          _traceEvents.add(event);
+          _emitTrace(List.unmodifiable(_traceEvents));
+        }),
+      );
+      await _httpClient!.connect();
+      return;
+    }
+
+    if (settings.activeSessionId.isEmpty) return;
+
+    _backend = _AgentBackend.websocket;
+    _wsClient = AgentWebSocketClient(
       host: settings.agentHost,
       sessionId: settings.activeSessionId,
-      authToken: settings.authToken.isEmpty ? null : settings.authToken,
+      authToken: _configuredAuthToken,
     );
 
-    _client!.onConnectionStatus.listen(_statusController.add);
-    _client!.onStateUpdate.listen(_hydrateTraceFromState);
-    _client!.onTraceEvent.listen((event) {
-      _traceEvents.add(event);
-      _traceController.add(List.unmodifiable(_traceEvents));
-    });
-    _client!.onToolCall.listen(_handleToolCall);
+    _subscriptions.add(_wsClient!.onConnectionStatus.listen(_emitStatus));
+    _subscriptions.add(_wsClient!.onStateUpdate.listen(_hydrateTraceFromState));
+    _subscriptions.add(
+      _wsClient!.onTraceEvent.listen((event) {
+        _traceEvents.add(event);
+        _emitTrace(List.unmodifiable(_traceEvents));
+      }),
+    );
+    _subscriptions.add(_wsClient!.onToolCall.listen(_handleToolCall));
 
-    await _client!.connect();
+    await _wsClient!.connect();
   }
 
   Future<void> disconnect() async {
-    await _client?.disconnect();
-    _client?.dispose();
-    _client = null;
+    for (final subscription in _subscriptions) {
+      await subscription.cancel();
+    }
+    _subscriptions.clear();
+
+    await _httpClient?.disconnect();
+    _httpClient?.dispose();
+    _httpClient = null;
+
+    await _wsClient?.disconnect();
+    _wsClient?.dispose();
+    _wsClient = null;
+
+    _backend = _AgentBackend.none;
+    _configuredHost = null;
+    _configuredSessionId = null;
+    _configuredAuthToken = null;
   }
 
   Future<void> runWorkflow(
@@ -54,16 +107,22 @@ class AgentSessionService {
     AgentRunContext context, {
     void Function(Object error)? onError,
   }) async {
-    final client = _client;
-    if (client == null || client.status != ConnectionStatus.connected) {
+    if (status != ConnectionStatus.connected) {
       throw StateError('Agent is not connected');
     }
 
     try {
-      await client.call('sendMessage', [
-        prompt,
-        context.toJson(),
-      ]);
+      switch (_backend) {
+        case _AgentBackend.httpRun:
+          await _httpClient!.run(prompt, context);
+        case _AgentBackend.websocket:
+          await _wsClient!.call('sendMessage', [
+            prompt,
+            context.toJson(),
+          ]);
+        case _AgentBackend.none:
+          throw StateError('Agent is not connected');
+      }
     } catch (error) {
       onError?.call(error);
       rethrow;
@@ -74,26 +133,34 @@ class AgentSessionService {
     AppSettings settings, {
     Duration timeout = const Duration(seconds: 15),
   }) async {
-    if (settings.activeSessionId.isEmpty) {
-      throw StateError('No active session configured');
-    }
-
-    final client = _client;
-    final needsConfigure = client == null ||
-        client.sessionId != settings.activeSessionId ||
-        client.host != settings.agentHost ||
-        (client.authToken ?? '') !=
-            (settings.authToken.isEmpty ? '' : settings.authToken);
+    final needsConfigure = _backend == _AgentBackend.none ||
+        _configuredHost != settings.agentHost ||
+        _configuredSessionId != settings.activeSessionId ||
+        _configuredAuthToken !=
+            (settings.authToken.isEmpty ? null : settings.authToken);
 
     if (needsConfigure) {
       await configure(settings);
-    } else if (client.status != ConnectionStatus.connected &&
-        client.status != ConnectionStatus.connecting &&
-        client.status != ConnectionStatus.reconnecting) {
-      await client.connect();
+    } else if (status != ConnectionStatus.connected &&
+        status != ConnectionStatus.connecting &&
+        status != ConnectionStatus.reconnecting) {
+      if (_httpClient != null) {
+        await _httpClient!.connect();
+      } else {
+        await _wsClient!.connect();
+      }
     }
 
-    if (_client?.status == ConnectionStatus.connected) return;
+    if (_backend == _AgentBackend.websocket &&
+        settings.activeSessionId.isEmpty) {
+      throw StateError('No active session configured');
+    }
+
+    if (_backend == _AgentBackend.none) {
+      throw StateError('Agent is not connected');
+    }
+
+    if (status == ConnectionStatus.connected) return;
 
     try {
       await connectionStatus
@@ -108,7 +175,8 @@ class AgentSessionService {
     String toolCallId,
     Map<String, dynamic> output,
   ) async {
-    final client = _client;
+    if (_backend != _AgentBackend.websocket) return;
+    final client = _wsClient;
     if (client == null) return;
     await client.call('addToolOutput', [
       {'toolCallId': toolCallId, 'output': output},
@@ -116,7 +184,11 @@ class AgentSessionService {
   }
 
   Future<void> cancelRun() async {
-    final client = _client;
+    if (_httpClient != null) {
+      await _httpClient!.cancelRun();
+      return;
+    }
+    final client = _wsClient;
     if (client == null) return;
     try {
       await client.call('cancel', []);
@@ -125,7 +197,7 @@ class AgentSessionService {
 
   void clearTrace() {
     _traceEvents.clear();
-    _traceController.add(const []);
+    _emitTrace(const []);
   }
 
   Future<void> Function(ToolCallEvent event)? onToolCallRequested;
@@ -140,7 +212,17 @@ class AgentSessionService {
     _traceEvents
       ..clear()
       ..addAll(buildTraceFromState(state));
-    _traceController.add(List.unmodifiable(_traceEvents));
+    _emitTrace(List.unmodifiable(_traceEvents));
+  }
+
+  void _emitStatus(ConnectionStatus status) {
+    if (_statusController.isClosed) return;
+    _statusController.add(status);
+  }
+
+  void _emitTrace(List<TraceEvent> events) {
+    if (_traceController.isClosed) return;
+    _traceController.add(events);
   }
 
   static List<TraceEvent> buildTraceFromState(Map<String, dynamic> state) {
@@ -209,7 +291,12 @@ class AgentSessionService {
   }
 
   void dispose() {
-    _client?.dispose();
+    for (final subscription in _subscriptions) {
+      subscription.cancel();
+    }
+    _subscriptions.clear();
+    _httpClient?.dispose();
+    _wsClient?.dispose();
     _traceController.close();
     _statusController.close();
   }

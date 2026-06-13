@@ -5,6 +5,7 @@ import 'package:tray_manager/tray_manager.dart';
 import '../../core/config.dart';
 import '../../core/overlay_window_service.dart';
 import '../../data/models/workflow.dart';
+import '../../shared/app_messenger.dart';
 import '../../shared/providers.dart';
 import '../../shared/widgets/glass_shell.dart';
 import '../overlay/overlay_window.dart';
@@ -115,9 +116,7 @@ class _MenuBarControllerState extends ConsumerState<MenuBarController>
               ref.invalidate(runHistoryProvider);
             } catch (error) {
               if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Run failed: $error')),
-                );
+                showAppSnackBar('Run failed: $error');
               }
             }
           }

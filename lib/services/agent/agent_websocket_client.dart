@@ -34,6 +34,7 @@ class AgentWebSocketClient {
   Timer? _reconnectTimer;
   int _reconnectAttempt = 0;
   bool _intentionalDisconnect = false;
+  bool _disposed = false;
 
   Stream<Map<String, dynamic>> get onStateUpdate => _stateController.stream;
   Stream<ToolCallEvent> get onToolCall => _toolCallController.stream;
@@ -44,6 +45,7 @@ class AgentWebSocketClient {
   Map<String, dynamic> get latestState => Map.unmodifiable(_latestState);
 
   Future<void> connect() async {
+    if (_disposed) return;
     _intentionalDisconnect = false;
     await _openSocket();
   }
@@ -51,6 +53,7 @@ class AgentWebSocketClient {
   Future<void> disconnect() async {
     _intentionalDisconnect = true;
     _reconnectTimer?.cancel();
+    _reconnectTimer = null;
     final channel = _channel;
     _channel = null;
     _setStatus(ConnectionStatus.disconnected);
@@ -91,6 +94,7 @@ class AgentWebSocketClient {
   }
 
   Future<void> _openSocket() async {
+    if (_disposed || _intentionalDisconnect) return;
     if (_status == ConnectionStatus.connecting) return;
     _setStatus(
       _reconnectAttempt > 0
@@ -103,6 +107,11 @@ class AgentWebSocketClient {
       logInfo('Connecting to $uri');
       _channel = WebSocketChannel.connect(uri);
       await _channel!.ready;
+      if (_disposed || _intentionalDisconnect) {
+        await _channel?.sink.close();
+        _channel = null;
+        return;
+      }
       _reconnectAttempt = 0;
       _setStatus(ConnectionStatus.connected);
       _emitTrace(TraceEventType.status, 'Connected to agent');
@@ -110,19 +119,20 @@ class AgentWebSocketClient {
       _channel!.stream.listen(
         _handleMessage,
         onError: (Object error) {
+          if (_disposed || _intentionalDisconnect) return;
           logError('WebSocket error', error: error);
           _setStatus(ConnectionStatus.error);
           _scheduleReconnect();
         },
         onDone: () {
-          if (!_intentionalDisconnect) {
-            _setStatus(ConnectionStatus.reconnecting);
-            _scheduleReconnect();
-          }
+          if (_disposed || _intentionalDisconnect) return;
+          _setStatus(ConnectionStatus.reconnecting);
+          _scheduleReconnect();
         },
         cancelOnError: true,
       );
     } catch (error, stackTrace) {
+      if (_disposed || _intentionalDisconnect) return;
       logError('Failed to connect', error: error, stackTrace: stackTrace);
       _setStatus(ConnectionStatus.error);
       _scheduleReconnect();
@@ -144,6 +154,7 @@ class AgentWebSocketClient {
   }
 
   void _handleMessage(dynamic raw) {
+    if (_disposed) return;
     Map<String, dynamic> message;
     try {
       message = jsonDecode(raw as String) as Map<String, dynamic>;
@@ -161,7 +172,9 @@ class AgentWebSocketClient {
       final state = (message['state'] as Map?)?.cast<String, dynamic>() ??
           message.cast<String, dynamic>();
       _latestState = state;
-      _stateController.add(state);
+      if (!_stateController.isClosed) {
+        _stateController.add(state);
+      }
       return;
     }
 
@@ -171,7 +184,9 @@ class AgentWebSocketClient {
         toolName: message['toolName'] as String? ?? 'unknown',
         input: (message['input'] as Map?)?.cast<String, dynamic>() ?? {},
       );
-      _toolCallController.add(event);
+      if (!_toolCallController.isClosed) {
+        _toolCallController.add(event);
+      }
       _emitTrace(
         TraceEventType.clientToolCall,
         'Client tool requested: ${event.toolName}',
@@ -196,23 +211,27 @@ class AgentWebSocketClient {
   }
 
   void _scheduleReconnect() {
-    if (_intentionalDisconnect) return;
+    if (_disposed || _intentionalDisconnect) return;
     _reconnectTimer?.cancel();
     final delayMs = min(
       AppConfig.reconnectMaxDelay.inMilliseconds,
       AppConfig.reconnectBaseDelay.inMilliseconds * pow(2, _reconnectAttempt).toInt(),
     );
     _reconnectAttempt++;
-    _reconnectTimer = Timer(Duration(milliseconds: delayMs), _openSocket);
+    _reconnectTimer = Timer(Duration(milliseconds: delayMs), () {
+      if (_disposed || _intentionalDisconnect) return;
+      _openSocket();
+    });
   }
 
   void _send(Map<String, dynamic> payload) {
     final channel = _channel;
-    if (channel == null) return;
+    if (channel == null || _disposed) return;
     channel.sink.add(jsonEncode(payload));
   }
 
   void _setStatus(ConnectionStatus status) {
+    if (_disposed || _connectionController.isClosed) return;
     _status = status;
     _connectionController.add(status);
   }
@@ -222,6 +241,7 @@ class AgentWebSocketClient {
     String message, {
     Map<String, dynamic> metadata = const {},
   }) {
+    if (_disposed || _traceController.isClosed) return;
     _traceController.add(
       TraceEvent(
         id: _uuid.v4(),
@@ -234,8 +254,22 @@ class AgentWebSocketClient {
   }
 
   void dispose() {
+    if (_disposed) return;
+    _disposed = true;
+    _intentionalDisconnect = true;
     _reconnectTimer?.cancel();
-    _channel?.sink.close();
+    _reconnectTimer = null;
+    final channel = _channel;
+    _channel = null;
+    try {
+      channel?.sink.close();
+    } catch (_) {}
+    for (final completer in _pendingRpc.values) {
+      if (!completer.isCompleted) {
+        completer.completeError(StateError('WebSocket client disposed'));
+      }
+    }
+    _pendingRpc.clear();
     _stateController.close();
     _toolCallController.close();
     _connectionController.close();
