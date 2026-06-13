@@ -8,4 +8,5 @@ class AppConfig {
   static const overlayDefaultWidth = 960.0;
   static const overlayDefaultHeight = 640.0;
   static const screenshotMaxEdge = 1920;
+  static const maxFileReadBytes = 5 * 1024 * 1024;
 }

@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:mime/mime.dart';
 
+import '../../core/config.dart';
+
 class FileService {
   Future<({String path, String name, String mime, String? base64})?> pickFile({
     bool includeContent = false,
@@ -19,6 +21,7 @@ class FileService {
     String? base64Content;
     if (includeContent) {
       final bytes = file.bytes ?? await File(path).readAsBytes();
+      if (bytes.length > AppConfig.maxFileReadBytes) return null;
       base64Content = base64Encode(bytes);
     }
 
@@ -28,13 +31,5 @@ class FileService {
       mime: mime,
       base64: base64Content,
     );
-  }
-
-  Future<({String content, String mime})?> readFile(String path) async {
-    final file = File(path);
-    if (!await file.exists()) return null;
-    final content = await file.readAsString();
-    final mime = lookupMimeType(path) ?? 'text/plain';
-    return (content: content, mime: mime);
   }
 }
