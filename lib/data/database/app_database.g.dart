@@ -870,6 +870,318 @@ class WorkflowShortcutsCompanion extends UpdateCompanion<WorkflowShortcut> {
   }
 }
 
+class $ChatSessionsTable extends ChatSessions
+    with TableInfo<$ChatSessionsTable, ChatSession> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ChatSessionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+      'title', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('New chat'));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _lastActiveAtMeta =
+      const VerificationMeta('lastActiveAt');
+  @override
+  late final GeneratedColumn<DateTime> lastActiveAt = GeneratedColumn<DateTime>(
+      'last_active_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, title, createdAt, updatedAt, lastActiveAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'chat_sessions';
+  @override
+  VerificationContext validateIntegrity(Insertable<ChatSession> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+          _titleMeta, title.isAcceptableOrUnknown(data['title']!, _titleMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('last_active_at')) {
+      context.handle(
+          _lastActiveAtMeta,
+          lastActiveAt.isAcceptableOrUnknown(
+              data['last_active_at']!, _lastActiveAtMeta));
+    } else if (isInserting) {
+      context.missing(_lastActiveAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ChatSession map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ChatSession(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      title: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+      lastActiveAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}last_active_at'])!,
+    );
+  }
+
+  @override
+  $ChatSessionsTable createAlias(String alias) {
+    return $ChatSessionsTable(attachedDatabase, alias);
+  }
+}
+
+class ChatSession extends DataClass implements Insertable<ChatSession> {
+  final String id;
+  final String title;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime lastActiveAt;
+  const ChatSession(
+      {required this.id,
+      required this.title,
+      required this.createdAt,
+      required this.updatedAt,
+      required this.lastActiveAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['title'] = Variable<String>(title);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['last_active_at'] = Variable<DateTime>(lastActiveAt);
+    return map;
+  }
+
+  ChatSessionsCompanion toCompanion(bool nullToAbsent) {
+    return ChatSessionsCompanion(
+      id: Value(id),
+      title: Value(title),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      lastActiveAt: Value(lastActiveAt),
+    );
+  }
+
+  factory ChatSession.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ChatSession(
+      id: serializer.fromJson<String>(json['id']),
+      title: serializer.fromJson<String>(json['title']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      lastActiveAt: serializer.fromJson<DateTime>(json['lastActiveAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'title': serializer.toJson<String>(title),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'lastActiveAt': serializer.toJson<DateTime>(lastActiveAt),
+    };
+  }
+
+  ChatSession copyWith(
+          {String? id,
+          String? title,
+          DateTime? createdAt,
+          DateTime? updatedAt,
+          DateTime? lastActiveAt}) =>
+      ChatSession(
+        id: id ?? this.id,
+        title: title ?? this.title,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+        lastActiveAt: lastActiveAt ?? this.lastActiveAt,
+      );
+  ChatSession copyWithCompanion(ChatSessionsCompanion data) {
+    return ChatSession(
+      id: data.id.present ? data.id.value : this.id,
+      title: data.title.present ? data.title.value : this.title,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      lastActiveAt: data.lastActiveAt.present
+          ? data.lastActiveAt.value
+          : this.lastActiveAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ChatSession(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('lastActiveAt: $lastActiveAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, title, createdAt, updatedAt, lastActiveAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ChatSession &&
+          other.id == this.id &&
+          other.title == this.title &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.lastActiveAt == this.lastActiveAt);
+}
+
+class ChatSessionsCompanion extends UpdateCompanion<ChatSession> {
+  final Value<String> id;
+  final Value<String> title;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime> lastActiveAt;
+  final Value<int> rowid;
+  const ChatSessionsCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.lastActiveAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ChatSessionsCompanion.insert({
+    required String id,
+    this.title = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    required DateTime lastActiveAt,
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt),
+        lastActiveAt = Value(lastActiveAt);
+  static Insertable<ChatSession> custom({
+    Expression<String>? id,
+    Expression<String>? title,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? lastActiveAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (lastActiveAt != null) 'last_active_at': lastActiveAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ChatSessionsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? title,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt,
+      Value<DateTime>? lastActiveAt,
+      Value<int>? rowid}) {
+    return ChatSessionsCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      lastActiveAt: lastActiveAt ?? this.lastActiveAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (lastActiveAt.present) {
+      map['last_active_at'] = Variable<DateTime>(lastActiveAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ChatSessionsCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('lastActiveAt: $lastActiveAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $RunHistoryTable extends RunHistory
     with TableInfo<$RunHistoryTable, RunHistoryData> {
   @override
@@ -886,6 +1198,12 @@ class $RunHistoryTable extends RunHistory
   @override
   late final GeneratedColumn<String> workflowId = GeneratedColumn<String>(
       'workflow_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _sessionIdMeta =
+      const VerificationMeta('sessionId');
+  @override
+  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
+      'session_id', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _workflowNameMeta =
       const VerificationMeta('workflowName');
@@ -929,6 +1247,7 @@ class $RunHistoryTable extends RunHistory
   List<GeneratedColumn> get $columns => [
         id,
         workflowId,
+        sessionId,
         workflowName,
         status,
         prompt,
@@ -956,6 +1275,10 @@ class $RunHistoryTable extends RunHistory
           _workflowIdMeta,
           workflowId.isAcceptableOrUnknown(
               data['workflow_id']!, _workflowIdMeta));
+    }
+    if (data.containsKey('session_id')) {
+      context.handle(_sessionIdMeta,
+          sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta));
     }
     if (data.containsKey('workflow_name')) {
       context.handle(
@@ -1004,6 +1327,8 @@ class $RunHistoryTable extends RunHistory
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       workflowId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}workflow_id']),
+      sessionId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}session_id']),
       workflowName: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}workflow_name'])!,
       status: attachedDatabase.typeMapping
@@ -1028,6 +1353,7 @@ class $RunHistoryTable extends RunHistory
 class RunHistoryData extends DataClass implements Insertable<RunHistoryData> {
   final String id;
   final String? workflowId;
+  final String? sessionId;
   final String workflowName;
   final String status;
   final String prompt;
@@ -1037,6 +1363,7 @@ class RunHistoryData extends DataClass implements Insertable<RunHistoryData> {
   const RunHistoryData(
       {required this.id,
       this.workflowId,
+      this.sessionId,
       required this.workflowName,
       required this.status,
       required this.prompt,
@@ -1049,6 +1376,9 @@ class RunHistoryData extends DataClass implements Insertable<RunHistoryData> {
     map['id'] = Variable<String>(id);
     if (!nullToAbsent || workflowId != null) {
       map['workflow_id'] = Variable<String>(workflowId);
+    }
+    if (!nullToAbsent || sessionId != null) {
+      map['session_id'] = Variable<String>(sessionId);
     }
     map['workflow_name'] = Variable<String>(workflowName);
     map['status'] = Variable<String>(status);
@@ -1067,6 +1397,9 @@ class RunHistoryData extends DataClass implements Insertable<RunHistoryData> {
       workflowId: workflowId == null && nullToAbsent
           ? const Value.absent()
           : Value(workflowId),
+      sessionId: sessionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sessionId),
       workflowName: Value(workflowName),
       status: Value(status),
       prompt: Value(prompt),
@@ -1084,6 +1417,7 @@ class RunHistoryData extends DataClass implements Insertable<RunHistoryData> {
     return RunHistoryData(
       id: serializer.fromJson<String>(json['id']),
       workflowId: serializer.fromJson<String?>(json['workflowId']),
+      sessionId: serializer.fromJson<String?>(json['sessionId']),
       workflowName: serializer.fromJson<String>(json['workflowName']),
       status: serializer.fromJson<String>(json['status']),
       prompt: serializer.fromJson<String>(json['prompt']),
@@ -1098,6 +1432,7 @@ class RunHistoryData extends DataClass implements Insertable<RunHistoryData> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'workflowId': serializer.toJson<String?>(workflowId),
+      'sessionId': serializer.toJson<String?>(sessionId),
       'workflowName': serializer.toJson<String>(workflowName),
       'status': serializer.toJson<String>(status),
       'prompt': serializer.toJson<String>(prompt),
@@ -1110,6 +1445,7 @@ class RunHistoryData extends DataClass implements Insertable<RunHistoryData> {
   RunHistoryData copyWith(
           {String? id,
           Value<String?> workflowId = const Value.absent(),
+          Value<String?> sessionId = const Value.absent(),
           String? workflowName,
           String? status,
           String? prompt,
@@ -1119,6 +1455,7 @@ class RunHistoryData extends DataClass implements Insertable<RunHistoryData> {
       RunHistoryData(
         id: id ?? this.id,
         workflowId: workflowId.present ? workflowId.value : this.workflowId,
+        sessionId: sessionId.present ? sessionId.value : this.sessionId,
         workflowName: workflowName ?? this.workflowName,
         status: status ?? this.status,
         prompt: prompt ?? this.prompt,
@@ -1131,6 +1468,7 @@ class RunHistoryData extends DataClass implements Insertable<RunHistoryData> {
       id: data.id.present ? data.id.value : this.id,
       workflowId:
           data.workflowId.present ? data.workflowId.value : this.workflowId,
+      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
       workflowName: data.workflowName.present
           ? data.workflowName.value
           : this.workflowName,
@@ -1148,6 +1486,7 @@ class RunHistoryData extends DataClass implements Insertable<RunHistoryData> {
     return (StringBuffer('RunHistoryData(')
           ..write('id: $id, ')
           ..write('workflowId: $workflowId, ')
+          ..write('sessionId: $sessionId, ')
           ..write('workflowName: $workflowName, ')
           ..write('status: $status, ')
           ..write('prompt: $prompt, ')
@@ -1159,14 +1498,15 @@ class RunHistoryData extends DataClass implements Insertable<RunHistoryData> {
   }
 
   @override
-  int get hashCode => Object.hash(id, workflowId, workflowName, status, prompt,
-      summary, startedAt, completedAt);
+  int get hashCode => Object.hash(id, workflowId, sessionId, workflowName,
+      status, prompt, summary, startedAt, completedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is RunHistoryData &&
           other.id == this.id &&
           other.workflowId == this.workflowId &&
+          other.sessionId == this.sessionId &&
           other.workflowName == this.workflowName &&
           other.status == this.status &&
           other.prompt == this.prompt &&
@@ -1178,6 +1518,7 @@ class RunHistoryData extends DataClass implements Insertable<RunHistoryData> {
 class RunHistoryCompanion extends UpdateCompanion<RunHistoryData> {
   final Value<String> id;
   final Value<String?> workflowId;
+  final Value<String?> sessionId;
   final Value<String> workflowName;
   final Value<String> status;
   final Value<String> prompt;
@@ -1188,6 +1529,7 @@ class RunHistoryCompanion extends UpdateCompanion<RunHistoryData> {
   const RunHistoryCompanion({
     this.id = const Value.absent(),
     this.workflowId = const Value.absent(),
+    this.sessionId = const Value.absent(),
     this.workflowName = const Value.absent(),
     this.status = const Value.absent(),
     this.prompt = const Value.absent(),
@@ -1199,6 +1541,7 @@ class RunHistoryCompanion extends UpdateCompanion<RunHistoryData> {
   RunHistoryCompanion.insert({
     required String id,
     this.workflowId = const Value.absent(),
+    this.sessionId = const Value.absent(),
     required String workflowName,
     required String status,
     this.prompt = const Value.absent(),
@@ -1213,6 +1556,7 @@ class RunHistoryCompanion extends UpdateCompanion<RunHistoryData> {
   static Insertable<RunHistoryData> custom({
     Expression<String>? id,
     Expression<String>? workflowId,
+    Expression<String>? sessionId,
     Expression<String>? workflowName,
     Expression<String>? status,
     Expression<String>? prompt,
@@ -1224,6 +1568,7 @@ class RunHistoryCompanion extends UpdateCompanion<RunHistoryData> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (workflowId != null) 'workflow_id': workflowId,
+      if (sessionId != null) 'session_id': sessionId,
       if (workflowName != null) 'workflow_name': workflowName,
       if (status != null) 'status': status,
       if (prompt != null) 'prompt': prompt,
@@ -1237,6 +1582,7 @@ class RunHistoryCompanion extends UpdateCompanion<RunHistoryData> {
   RunHistoryCompanion copyWith(
       {Value<String>? id,
       Value<String?>? workflowId,
+      Value<String?>? sessionId,
       Value<String>? workflowName,
       Value<String>? status,
       Value<String>? prompt,
@@ -1247,6 +1593,7 @@ class RunHistoryCompanion extends UpdateCompanion<RunHistoryData> {
     return RunHistoryCompanion(
       id: id ?? this.id,
       workflowId: workflowId ?? this.workflowId,
+      sessionId: sessionId ?? this.sessionId,
       workflowName: workflowName ?? this.workflowName,
       status: status ?? this.status,
       prompt: prompt ?? this.prompt,
@@ -1265,6 +1612,9 @@ class RunHistoryCompanion extends UpdateCompanion<RunHistoryData> {
     }
     if (workflowId.present) {
       map['workflow_id'] = Variable<String>(workflowId.value);
+    }
+    if (sessionId.present) {
+      map['session_id'] = Variable<String>(sessionId.value);
     }
     if (workflowName.present) {
       map['workflow_name'] = Variable<String>(workflowName.value);
@@ -1295,6 +1645,7 @@ class RunHistoryCompanion extends UpdateCompanion<RunHistoryData> {
     return (StringBuffer('RunHistoryCompanion(')
           ..write('id: $id, ')
           ..write('workflowId: $workflowId, ')
+          ..write('sessionId: $sessionId, ')
           ..write('workflowName: $workflowName, ')
           ..write('status: $status, ')
           ..write('prompt: $prompt, ')
@@ -1314,13 +1665,14 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $WorkflowsTable workflows = $WorkflowsTable(this);
   late final $WorkflowShortcutsTable workflowShortcuts =
       $WorkflowShortcutsTable(this);
+  late final $ChatSessionsTable chatSessions = $ChatSessionsTable(this);
   late final $RunHistoryTable runHistory = $RunHistoryTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [settingsTable, workflows, workflowShortcuts, runHistory];
+      [settingsTable, workflows, workflowShortcuts, chatSessions, runHistory];
 }
 
 typedef $$SettingsTableTableCreateCompanionBuilder = SettingsTableCompanion
@@ -2007,9 +2359,184 @@ typedef $$WorkflowShortcutsTableProcessedTableManager = ProcessedTableManager<
     (WorkflowShortcut, $$WorkflowShortcutsTableReferences),
     WorkflowShortcut,
     PrefetchHooks Function({bool workflowId})>;
+typedef $$ChatSessionsTableCreateCompanionBuilder = ChatSessionsCompanion
+    Function({
+  required String id,
+  Value<String> title,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+  required DateTime lastActiveAt,
+  Value<int> rowid,
+});
+typedef $$ChatSessionsTableUpdateCompanionBuilder = ChatSessionsCompanion
+    Function({
+  Value<String> id,
+  Value<String> title,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<DateTime> lastActiveAt,
+  Value<int> rowid,
+});
+
+class $$ChatSessionsTableFilterComposer
+    extends Composer<_$AppDatabase, $ChatSessionsTable> {
+  $$ChatSessionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get lastActiveAt => $composableBuilder(
+      column: $table.lastActiveAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$ChatSessionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ChatSessionsTable> {
+  $$ChatSessionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get lastActiveAt => $composableBuilder(
+      column: $table.lastActiveAt,
+      builder: (column) => ColumnOrderings(column));
+}
+
+class $$ChatSessionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ChatSessionsTable> {
+  $$ChatSessionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastActiveAt => $composableBuilder(
+      column: $table.lastActiveAt, builder: (column) => column);
+}
+
+class $$ChatSessionsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $ChatSessionsTable,
+    ChatSession,
+    $$ChatSessionsTableFilterComposer,
+    $$ChatSessionsTableOrderingComposer,
+    $$ChatSessionsTableAnnotationComposer,
+    $$ChatSessionsTableCreateCompanionBuilder,
+    $$ChatSessionsTableUpdateCompanionBuilder,
+    (
+      ChatSession,
+      BaseReferences<_$AppDatabase, $ChatSessionsTable, ChatSession>
+    ),
+    ChatSession,
+    PrefetchHooks Function()> {
+  $$ChatSessionsTableTableManager(_$AppDatabase db, $ChatSessionsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ChatSessionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ChatSessionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ChatSessionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> title = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<DateTime> lastActiveAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              ChatSessionsCompanion(
+            id: id,
+            title: title,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            lastActiveAt: lastActiveAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            Value<String> title = const Value.absent(),
+            required DateTime createdAt,
+            required DateTime updatedAt,
+            required DateTime lastActiveAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              ChatSessionsCompanion.insert(
+            id: id,
+            title: title,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            lastActiveAt: lastActiveAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$ChatSessionsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $ChatSessionsTable,
+    ChatSession,
+    $$ChatSessionsTableFilterComposer,
+    $$ChatSessionsTableOrderingComposer,
+    $$ChatSessionsTableAnnotationComposer,
+    $$ChatSessionsTableCreateCompanionBuilder,
+    $$ChatSessionsTableUpdateCompanionBuilder,
+    (
+      ChatSession,
+      BaseReferences<_$AppDatabase, $ChatSessionsTable, ChatSession>
+    ),
+    ChatSession,
+    PrefetchHooks Function()>;
 typedef $$RunHistoryTableCreateCompanionBuilder = RunHistoryCompanion Function({
   required String id,
   Value<String?> workflowId,
+  Value<String?> sessionId,
   required String workflowName,
   required String status,
   Value<String> prompt,
@@ -2021,6 +2548,7 @@ typedef $$RunHistoryTableCreateCompanionBuilder = RunHistoryCompanion Function({
 typedef $$RunHistoryTableUpdateCompanionBuilder = RunHistoryCompanion Function({
   Value<String> id,
   Value<String?> workflowId,
+  Value<String?> sessionId,
   Value<String> workflowName,
   Value<String> status,
   Value<String> prompt,
@@ -2044,6 +2572,9 @@ class $$RunHistoryTableFilterComposer
 
   ColumnFilters<String> get workflowId => $composableBuilder(
       column: $table.workflowId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get sessionId => $composableBuilder(
+      column: $table.sessionId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get workflowName => $composableBuilder(
       column: $table.workflowName, builder: (column) => ColumnFilters(column));
@@ -2079,6 +2610,9 @@ class $$RunHistoryTableOrderingComposer
   ColumnOrderings<String> get workflowId => $composableBuilder(
       column: $table.workflowId, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get sessionId => $composableBuilder(
+      column: $table.sessionId, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get workflowName => $composableBuilder(
       column: $table.workflowName,
       builder: (column) => ColumnOrderings(column));
@@ -2113,6 +2647,9 @@ class $$RunHistoryTableAnnotationComposer
 
   GeneratedColumn<String> get workflowId => $composableBuilder(
       column: $table.workflowId, builder: (column) => column);
+
+  GeneratedColumn<String> get sessionId =>
+      $composableBuilder(column: $table.sessionId, builder: (column) => column);
 
   GeneratedColumn<String> get workflowName => $composableBuilder(
       column: $table.workflowName, builder: (column) => column);
@@ -2161,6 +2698,7 @@ class $$RunHistoryTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
             Value<String?> workflowId = const Value.absent(),
+            Value<String?> sessionId = const Value.absent(),
             Value<String> workflowName = const Value.absent(),
             Value<String> status = const Value.absent(),
             Value<String> prompt = const Value.absent(),
@@ -2172,6 +2710,7 @@ class $$RunHistoryTableTableManager extends RootTableManager<
               RunHistoryCompanion(
             id: id,
             workflowId: workflowId,
+            sessionId: sessionId,
             workflowName: workflowName,
             status: status,
             prompt: prompt,
@@ -2183,6 +2722,7 @@ class $$RunHistoryTableTableManager extends RootTableManager<
           createCompanionCallback: ({
             required String id,
             Value<String?> workflowId = const Value.absent(),
+            Value<String?> sessionId = const Value.absent(),
             required String workflowName,
             required String status,
             Value<String> prompt = const Value.absent(),
@@ -2194,6 +2734,7 @@ class $$RunHistoryTableTableManager extends RootTableManager<
               RunHistoryCompanion.insert(
             id: id,
             workflowId: workflowId,
+            sessionId: sessionId,
             workflowName: workflowName,
             status: status,
             prompt: prompt,
@@ -2234,6 +2775,8 @@ class $AppDatabaseManager {
       $$WorkflowsTableTableManager(_db, _db.workflows);
   $$WorkflowShortcutsTableTableManager get workflowShortcuts =>
       $$WorkflowShortcutsTableTableManager(_db, _db.workflowShortcuts);
+  $$ChatSessionsTableTableManager get chatSessions =>
+      $$ChatSessionsTableTableManager(_db, _db.chatSessions);
   $$RunHistoryTableTableManager get runHistory =>
       $$RunHistoryTableTableManager(_db, _db.runHistory);
 }

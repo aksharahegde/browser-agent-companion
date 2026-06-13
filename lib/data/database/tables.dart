@@ -33,9 +33,21 @@ class WorkflowShortcuts extends Table {
   Set<Column> get primaryKey => {workflowId};
 }
 
+class ChatSessions extends Table {
+  TextColumn get id => text()();
+  TextColumn get title => text().withDefault(const Constant('New chat'))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get lastActiveAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 class RunHistory extends Table {
   TextColumn get id => text()();
   TextColumn get workflowId => text().nullable()();
+  TextColumn get sessionId => text().nullable()();
   TextColumn get workflowName => text()();
   TextColumn get status => text()();
   TextColumn get prompt => text().withDefault(const Constant(''))();

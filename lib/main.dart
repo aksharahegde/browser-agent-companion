@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
-import 'package:tray_manager/tray_manager.dart';
-import 'package:uuid/uuid.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
@@ -55,10 +53,8 @@ class _BootstrapAppState extends ConsumerState<_BootstrapApp> {
       await settingsNotifier.load();
 
       var settings = ref.read(settingsProvider);
-      if (settings.sessionId.isEmpty) {
-        settings = settings.copyWith(sessionId: const Uuid().v4());
-        await settingsNotifier.update(settings);
-      }
+      await ref.read(sessionServiceProvider).ensureInitialized();
+      settings = ref.read(settingsProvider);
 
       final agent = ref.read(agentSessionServiceProvider);
       final localTools = ref.read(localToolExecutorProvider);

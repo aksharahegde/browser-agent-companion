@@ -7,6 +7,7 @@ import '../../core/overlay_window_service.dart';
 import '../../data/models/workflow.dart';
 import '../../shared/providers.dart';
 import '../overlay/overlay_window.dart';
+import '../sessions/sessions_page.dart';
 import '../settings/settings_page.dart';
 import '../workflows/workflow_editor_page.dart';
 
@@ -56,6 +57,10 @@ class _MenuBarControllerState extends ConsumerState<MenuBarController>
         label: 'Manage Workflows',
       ),
       MenuItem(
+        key: 'sessions',
+        label: 'Manage Sessions',
+      ),
+      MenuItem(
         key: 'settings',
         label: 'Settings',
       ),
@@ -87,6 +92,8 @@ class _MenuBarControllerState extends ConsumerState<MenuBarController>
         await showOverlayWindow(ref);
       case 'workflows':
         await _showWorkflows();
+      case 'sessions':
+        await _showSessions();
       case 'settings':
         await _showSettings();
       case 'quit':
@@ -108,12 +115,21 @@ class _MenuBarControllerState extends ConsumerState<MenuBarController>
   Future<void> _showSettings() async {
     ref.read(settingsVisibleProvider.notifier).state = true;
     ref.read(workflowsVisibleProvider.notifier).state = false;
+    ref.read(sessionsVisibleProvider.notifier).state = false;
     await showOverlayWindow(ref);
   }
 
   Future<void> _showWorkflows() async {
     ref.read(workflowsVisibleProvider.notifier).state = true;
     ref.read(settingsVisibleProvider.notifier).state = false;
+    ref.read(sessionsVisibleProvider.notifier).state = false;
+    await showOverlayWindow(ref);
+  }
+
+  Future<void> _showSessions() async {
+    ref.read(sessionsVisibleProvider.notifier).state = true;
+    ref.read(settingsVisibleProvider.notifier).state = false;
+    ref.read(workflowsVisibleProvider.notifier).state = false;
     await showOverlayWindow(ref);
   }
 
@@ -126,12 +142,15 @@ class _MenuBarControllerState extends ConsumerState<MenuBarController>
     final showOverlay = ref.watch(overlayVisibleProvider);
     final showSettings = ref.watch(settingsVisibleProvider);
     final showWorkflows = ref.watch(workflowsVisibleProvider);
+    final showSessions = ref.watch(sessionsVisibleProvider);
 
     Widget child = const OverlayWindow();
     if (showSettings) {
       child = const SettingsPage();
     } else if (showWorkflows) {
       child = const WorkflowEditorPage();
+    } else if (showSessions) {
+      child = const SessionsPage();
     }
 
     return SizedBox(
@@ -141,7 +160,7 @@ class _MenuBarControllerState extends ConsumerState<MenuBarController>
           ? Scaffold(
               body: Column(
                 children: [
-                  if (showSettings || showWorkflows)
+                  if (showSettings || showWorkflows || showSessions)
                     Padding(
                       padding: const EdgeInsets.all(8),
                       child: Wrap(
@@ -157,6 +176,9 @@ class _MenuBarControllerState extends ConsumerState<MenuBarController>
                                   .state = false;
                               ref
                                   .read(workflowsVisibleProvider.notifier)
+                                  .state = false;
+                              ref
+                                  .read(sessionsVisibleProvider.notifier)
                                   .state = false;
                             },
                             child: const Text('Back to overlay'),

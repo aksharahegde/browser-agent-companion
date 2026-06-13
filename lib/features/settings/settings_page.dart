@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../data/models/app_settings.dart';
 import '../../shared/providers.dart';
@@ -16,7 +16,6 @@ class SettingsPage extends ConsumerStatefulWidget {
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   late final TextEditingController _hostController;
   late final TextEditingController _tokenController;
-  late final TextEditingController _sessionController;
   bool _screenPermission = false;
 
   @override
@@ -25,7 +24,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final settings = ref.read(settingsProvider);
     _hostController = TextEditingController(text: settings.agentHost);
     _tokenController = TextEditingController(text: settings.authToken);
-    _sessionController = TextEditingController(text: settings.sessionId);
     _loadPermissions();
   }
 
@@ -39,13 +37,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   void dispose() {
     _hostController.dispose();
     _tokenController.dispose();
-    _sessionController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
+    final activeSession = ref.watch(activeSessionProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -58,35 +56,55 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           const SizedBox(height: 12),
           TextField(
-            controller: _sessionController,
-            decoration: const InputDecoration(labelText: 'Session ID'),
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton(
-            onPressed: () {
-              _sessionController.text = const Uuid().v4();
-            },
-            child: const Text('Regenerate session ID'),
-          ),
-          const SizedBox(height: 12),
-          TextField(
             controller: _tokenController,
             obscureText: true,
             decoration: const InputDecoration(labelText: 'Auth token (optional)'),
           ),
           const SizedBox(height: 16),
+          activeSession.when(
+            data: (session) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(session?.title ?? 'Active session ID'),
+              subtitle: Text(
+                settings.activeSessionId.isEmpty
+                    ? 'None'
+                    : settings.activeSessionId,
+                style: const TextStyle(fontFamily: 'Menlo', fontSize: 11),
+              ),
+              trailing: settings.activeSessionId.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Copy session ID',
+                      icon: const Icon(Icons.copy),
+                      onPressed: () {
+                        Clipboard.setData(
+                          ClipboardData(text: settings.activeSessionId),
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Session ID copied')),
+                        );
+                      },
+                    ),
+            ),
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
+          ),
+          const SizedBox(height: 8),
           SwitchListTile(
+            contentPadding: EdgeInsets.zero,
             title: const Text('Default attach clipboard'),
             value: settings.defaultAttachClipboard,
             onChanged: (v) => _save(settings.copyWith(defaultAttachClipboard: v)),
           ),
           SwitchListTile(
+            contentPadding: EdgeInsets.zero,
             title: const Text('Default attach screenshot'),
             value: settings.defaultAttachScreenshot,
             onChanged: (v) =>
                 _save(settings.copyWith(defaultAttachScreenshot: v)),
           ),
           SwitchListTile(
+            contentPadding: EdgeInsets.zero,
             title: const Text('Launch at login'),
             value: settings.launchAtLogin,
             onChanged: (v) async {
@@ -165,9 +183,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final current = ref.read(settingsProvider);
     final updated = current.copyWith(
       agentHost: _hostController.text.trim(),
-      sessionId: _sessionController.text.trim().isEmpty
-          ? const Uuid().v4()
-          : _sessionController.text.trim(),
       authToken: _tokenController.text.trim(),
     );
     await _save(updated);

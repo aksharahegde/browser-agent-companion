@@ -1,7 +1,7 @@
 class AppSettings {
   const AppSettings({
     required this.agentHost,
-    required this.sessionId,
+    required this.activeSessionId,
     this.authToken = '',
     this.overlayOpacity = 0.95,
     this.overlayFontSize = 13.0,
@@ -15,7 +15,7 @@ class AppSettings {
   });
 
   final String agentHost;
-  final String sessionId;
+  final String activeSessionId;
   final String authToken;
   final double overlayOpacity;
   final double overlayFontSize;
@@ -29,7 +29,7 @@ class AppSettings {
 
   AppSettings copyWith({
     String? agentHost,
-    String? sessionId,
+    String? activeSessionId,
     String? authToken,
     double? overlayOpacity,
     double? overlayFontSize,
@@ -43,7 +43,7 @@ class AppSettings {
   }) {
     return AppSettings(
       agentHost: agentHost ?? this.agentHost,
-      sessionId: sessionId ?? this.sessionId,
+      activeSessionId: activeSessionId ?? this.activeSessionId,
       authToken: authToken ?? this.authToken,
       overlayOpacity: overlayOpacity ?? this.overlayOpacity,
       overlayFontSize: overlayFontSize ?? this.overlayFontSize,
@@ -61,7 +61,7 @@ class AppSettings {
 
   static const defaults = AppSettings(
     agentHost: 'https://stateful-browser-agent.workers.dev',
-    sessionId: '',
+    activeSessionId: '',
     authToken: '',
   );
 }

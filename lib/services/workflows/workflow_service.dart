@@ -116,14 +116,17 @@ class WorkflowService {
     );
     final context = await _buildContext(workflow, settings);
     final runId = _uuid.v4();
+    final sessionId = settings?.activeSessionId ?? '';
+    final startedAt = DateTime.now();
 
     await _database.insertRunHistory(
       RunHistoryEntry(
         id: runId,
         workflowId: workflow.id,
+        sessionId: sessionId.isEmpty ? null : sessionId,
         workflowName: workflow.name,
         status: RunStatus.running.name,
-        startedAt: DateTime.now(),
+        startedAt: startedAt,
         prompt: prompt,
       ),
     );
@@ -134,9 +137,10 @@ class WorkflowService {
         RunHistoryEntry(
           id: runId,
           workflowId: workflow.id,
+          sessionId: sessionId.isEmpty ? null : sessionId,
           workflowName: workflow.name,
           status: RunStatus.completed.name,
-          startedAt: DateTime.now(),
+          startedAt: startedAt,
           completedAt: DateTime.now(),
           prompt: prompt,
           summary: 'Completed',
@@ -147,9 +151,10 @@ class WorkflowService {
         RunHistoryEntry(
           id: runId,
           workflowId: workflow.id,
+          sessionId: sessionId.isEmpty ? null : sessionId,
           workflowName: workflow.name,
           status: RunStatus.failed.name,
-          startedAt: DateTime.now(),
+          startedAt: startedAt,
           completedAt: DateTime.now(),
           prompt: prompt,
           summary: error.toString(),

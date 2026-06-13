@@ -4,20 +4,33 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
+import '../models/agent_session.dart';
 import '../models/app_settings.dart';
 import '../models/workflow.dart';
 import 'tables.dart';
 
 part 'app_database.g.dart';
 
-@DriftDatabase(tables: [SettingsTable, Workflows, WorkflowShortcuts, RunHistory])
+@DriftDatabase(
+  tables: [SettingsTable, Workflows, WorkflowShortcuts, ChatSessions, RunHistory],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.createTable(chatSessions);
+            await m.addColumn(runHistory, runHistory.sessionId);
+          }
+        },
+      );
 
   Future<void> saveSetting(String key, String value) async {
     await into(settingsTable).insertOnConflictUpdate(
@@ -38,7 +51,8 @@ class AppDatabase extends _$AppDatabase {
 
     return AppSettings(
       agentHost: map['agentHost'] ?? AppSettings.defaults.agentHost,
-      sessionId: map['sessionId'] ?? '',
+      activeSessionId:
+          map['activeSessionId'] ?? map['sessionId'] ?? '',
       authToken: map['authToken'] ?? '',
       overlayOpacity: double.tryParse(map['overlayOpacity'] ?? '') ?? 0.95,
       overlayFontSize: double.tryParse(map['overlayFontSize'] ?? '') ?? 13.0,
@@ -55,7 +69,7 @@ class AppDatabase extends _$AppDatabase {
   Future<void> saveSettings(AppSettings settings) async {
     final entries = <String, String>{
       'agentHost': settings.agentHost,
-      'sessionId': settings.sessionId,
+      'activeSessionId': settings.activeSessionId,
       'authToken': settings.authToken,
       'overlayOpacity': settings.overlayOpacity.toString(),
       'overlayFontSize': settings.overlayFontSize.toString(),
@@ -79,6 +93,78 @@ class AppDatabase extends _$AppDatabase {
         );
       }
     });
+  }
+
+  Future<List<AgentSession>> loadSessions() async {
+    final rows = await (select(chatSessions)
+          ..orderBy([(t) => OrderingTerm.desc(t.lastActiveAt)]))
+        .get();
+
+    return rows.map(_mapSessionRow).toList();
+  }
+
+  Future<AgentSession?> getSession(String id) async {
+    final row = await (select(chatSessions)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    return row == null ? null : _mapSessionRow(row);
+  }
+
+  Future<void> upsertSession(AgentSession session) async {
+    await into(chatSessions).insertOnConflictUpdate(
+      ChatSessionsCompanion(
+        id: Value(session.id),
+        title: Value(session.title),
+        createdAt: Value(session.createdAt),
+        updatedAt: Value(session.updatedAt),
+        lastActiveAt: Value(session.lastActiveAt),
+      ),
+    );
+  }
+
+  Future<void> deleteSession(String id) async {
+    await (delete(chatSessions)..where((t) => t.id.equals(id))).go();
+  }
+
+  Future<void> touchSession(String id, {String? title}) async {
+    final existing = await getSession(id);
+    if (existing == null) return;
+    final now = DateTime.now();
+    await upsertSession(
+      existing.copyWith(
+        title: title ?? existing.title,
+        updatedAt: now,
+        lastActiveAt: now,
+      ),
+    );
+  }
+
+  Future<void> migrateLegacySessionIfNeeded(String legacySessionId) async {
+    final existing = await loadSessions();
+    if (existing.isNotEmpty) return;
+
+    final id = legacySessionId.isNotEmpty ? legacySessionId : '';
+    if (id.isEmpty) return;
+
+    final now = DateTime.now();
+    await upsertSession(
+      AgentSession(
+        id: id,
+        title: AgentSession.defaultTitle,
+        createdAt: now,
+        updatedAt: now,
+        lastActiveAt: now,
+      ),
+    );
+  }
+
+  AgentSession _mapSessionRow(ChatSession row) {
+    return AgentSession(
+      id: row.id,
+      title: row.title,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      lastActiveAt: row.lastActiveAt,
+    );
   }
 
   Future<List<WorkflowItem>> loadWorkflows() async {
@@ -148,6 +234,7 @@ class AppDatabase extends _$AppDatabase {
       RunHistoryCompanion(
         id: Value(entry.id),
         workflowId: Value(entry.workflowId),
+        sessionId: Value(entry.sessionId),
         workflowName: Value(entry.workflowName),
         status: Value(entry.status),
         prompt: Value(entry.prompt),
@@ -158,8 +245,12 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  Future<List<RunHistoryEntry>> loadRunHistory({int limit = 50}) async {
+  Future<List<RunHistoryEntry>> loadRunHistory({
+    required String sessionId,
+    int limit = 50,
+  }) async {
     final rows = await (select(runHistory)
+          ..where((t) => t.sessionId.equals(sessionId))
           ..orderBy([(t) => OrderingTerm.desc(t.startedAt)])
           ..limit(limit))
         .get();
@@ -169,6 +260,7 @@ class AppDatabase extends _$AppDatabase {
           (row) => RunHistoryEntry(
             id: row.id,
             workflowId: row.workflowId,
+            sessionId: row.sessionId,
             workflowName: row.workflowName,
             status: row.status,
             prompt: row.prompt,
