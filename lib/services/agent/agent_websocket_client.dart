@@ -3,11 +3,13 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:uuid/uuid.dart';
+import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../core/config.dart';
 import '../../core/logging.dart';
 import '../../data/models/trace_event.dart';
+import 'agent_connection_uri.dart';
 
 class AgentWebSocketClient {
   AgentWebSocketClient({
@@ -103,9 +105,12 @@ class AgentWebSocketClient {
     );
 
     try {
-      final uri = _buildUri();
-      logInfo('Connecting to $uri');
-      _channel = WebSocketChannel.connect(uri);
+      final uri = buildAgentWebSocketUri(host: host, sessionId: sessionId);
+      logInfo('Connecting to ${describeAgentConnectionTarget(uri)}');
+      final headers = buildAgentAuthHeaders(authToken);
+      _channel = headers.isEmpty
+          ? WebSocketChannel.connect(uri)
+          : IOWebSocketChannel.connect(uri, headers: headers);
       await _channel!.ready;
       if (_disposed || _intentionalDisconnect) {
         await _channel?.sink.close();
@@ -137,20 +142,6 @@ class AgentWebSocketClient {
       _setStatus(ConnectionStatus.error);
       _scheduleReconnect();
     }
-  }
-
-  Uri _buildUri() {
-    final base = host.endsWith('/') ? host.substring(0, host.length - 1) : host;
-    final wsBase = base
-        .replaceFirst('https://', 'wss://')
-        .replaceFirst('http://', 'ws://');
-    final query = <String, String>{};
-    if (authToken != null && authToken!.isNotEmpty) {
-      query['token'] = authToken!;
-    }
-    return Uri.parse(
-      '$wsBase/agents/${AppConfig.agentClassName}/$sessionId',
-    ).replace(queryParameters: query.isEmpty ? null : query);
   }
 
   void _handleMessage(dynamic raw) {

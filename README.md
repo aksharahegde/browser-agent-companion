@@ -46,7 +46,7 @@ The app runs as a menu-bar agent (no Dock icon). Use the tray icon to open the o
 Open **Settings** from the tray menu:
 
 - **Agent host URL** — your deployed Worker URL (default: `https://stateful-browser-agent.workers.dev`)
-- **Auth token** — optional, passed as WebSocket query param
+- **Auth token** — optional, sent as `Authorization: Bearer` on the WebSocket handshake
 - **Active session** — shown read-only with a copy button; managed via the Sessions UI, not typed manually
 - **Default attach clipboard / screenshot** — default toggles for the overlay prompt panel
 - **Launch at login** — start the app automatically at login

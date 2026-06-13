@@ -1,3 +1,4 @@
+import '../../core/config.dart';
 import '../../data/models/trace_event.dart';
 import 'clipboard_service.dart';
 import 'file_service.dart';
@@ -37,7 +38,13 @@ class LocalToolExecutor {
         final picked = await _fileService.pickFile(
           includeContent: event.input['includeContent'] == true,
         );
-        if (picked == null) return {'error': 'No file selected'};
+        if (picked == null) {
+          return {
+            'error': event.input['includeContent'] == true
+                ? 'No file selected or file exceeds ${AppConfig.maxFileReadBytes ~/ (1024 * 1024)} MB limit'
+                : 'No file selected',
+          };
+        }
         return {
           'path': picked.path,
           'name': picked.name,
@@ -45,11 +52,10 @@ class LocalToolExecutor {
           if (picked.base64 != null) 'base64': picked.base64,
         };
       case 'readFile':
-        final path = event.input['path'] as String?;
-        if (path == null) return {'error': 'path is required'};
-        final file = await _fileService.readFile(path);
-        if (file == null) return {'error': 'File not found'};
-        return {'content': file.content, 'mime': file.mime};
+        return {
+          'error':
+              'readFile is disabled; the agent must use pickFile so you choose the file',
+        };
       default:
         return {'error': 'Unsupported tool: ${event.toolName}'};
     }

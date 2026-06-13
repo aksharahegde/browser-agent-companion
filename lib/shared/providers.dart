@@ -12,6 +12,7 @@ import '../services/local/clipboard_service.dart';
 import '../services/local/file_service.dart';
 import '../services/local/local_tool_executor.dart';
 import '../services/local/screenshot_service.dart';
+import '../services/security/tool_approval_service.dart';
 import '../services/sessions/session_service.dart';
 import '../services/workflows/workflow_service.dart';
 
@@ -37,6 +38,17 @@ final localToolExecutorProvider = Provider((ref) {
     clipboardService: ref.watch(clipboardServiceProvider),
     screenshotService: ref.watch(screenshotServiceProvider),
     fileService: ref.watch(fileServiceProvider),
+  );
+});
+
+final toolApprovalServiceProvider = Provider((ref) {
+  return ToolApprovalService(
+    showWindow: () async {
+      ref.read(overlayVisibleProvider.notifier).show();
+      await windowManager.show();
+      await windowManager.focus();
+      await windowManager.setAlwaysOnTop(true);
+    },
   );
 });
 

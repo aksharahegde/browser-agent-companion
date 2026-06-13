@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'features/menu_bar/menu_bar_controller.dart';
 import 'shared/app_messenger.dart';
+import 'shared/app_navigator.dart';
 import 'shared/theme.dart';
 
 class CuaCompanionApp extends ConsumerWidget {
@@ -13,6 +14,7 @@ class CuaCompanionApp extends ConsumerWidget {
     return MaterialApp(
       title: 'CUA Companion',
       debugShowCheckedModeBanner: false,
+      navigatorKey: appNavigatorKey,
       scaffoldMessengerKey: appScaffoldMessengerKey,
       theme: AppTheme.dark(),
       builder: (context, child) {

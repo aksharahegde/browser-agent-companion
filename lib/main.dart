@@ -61,7 +61,16 @@ class _BootstrapAppState extends ConsumerState<_BootstrapApp> {
 
       final agent = ref.read(agentSessionServiceProvider);
       final localTools = ref.read(localToolExecutorProvider);
+      final toolApproval = ref.read(toolApprovalServiceProvider);
       agent.onToolCallRequested = (event) async {
+        final approved = await toolApproval.requestApproval(event);
+        if (!approved) {
+          await agent.submitToolResult(
+            event.toolCallId,
+            {'error': 'User denied tool access'},
+          );
+          return;
+        }
         final output = await localTools.execute(event);
         await agent.submitToolResult(event.toolCallId, output);
       };
