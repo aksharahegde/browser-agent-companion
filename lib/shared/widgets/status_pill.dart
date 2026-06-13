@@ -58,11 +58,7 @@ class StatusPill extends StatelessWidget {
     return Container(
       constraints: const BoxConstraints(maxWidth: 200),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: tokens.glassFill(0.5),
-        borderRadius: BorderRadius.circular(tokens.radiusMd),
-        border: Border.all(color: tokens.glassBorder),
-      ),
+      decoration: tokens.chipDecoration(),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -72,6 +68,12 @@ class StatusPill extends StatelessWidget {
             decoration: BoxDecoration(
               color: resolvedColor,
               shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: resolvedColor.withValues(alpha: 0.45),
+                  blurRadius: 6,
+                ),
+              ],
             ),
           ),
           const SizedBox(width: 6),

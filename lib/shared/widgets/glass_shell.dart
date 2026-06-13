@@ -9,42 +9,70 @@ class GlassShell extends StatelessWidget {
     super.key,
     required this.child,
     this.opacity = 1.0,
-    this.padding,
   });
 
   final Widget child;
   final double opacity;
-  final EdgeInsetsGeometry? padding;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final radius = BorderRadius.circular(tokens.radiusLg);
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(tokens.radiusLg),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(
-          sigmaX: tokens.glassBlur,
-          sigmaY: tokens.glassBlur,
+    return Padding(
+      padding: EdgeInsets.all(tokens.shellInset),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          boxShadow: [
+            BoxShadow(
+              color: tokens.shadowSoft,
+              blurRadius: 32,
+              spreadRadius: -4,
+              offset: const Offset(0, 16),
+            ),
+          ],
         ),
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            color: tokens.glassFill(opacity),
-            borderRadius: BorderRadius.circular(tokens.radiusLg),
-            border: Border.all(color: tokens.glassBorder),
-            boxShadow: [
-              BoxShadow(
-                color: tokens.shadowSoft,
-                blurRadius: 24,
-                offset: const Offset(0, 8),
+        child: ClipRRect(
+          borderRadius: radius,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(
+              sigmaX: tokens.glassBlur,
+              sigmaY: tokens.glassBlur,
+            ),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: tokens.shellGradient(opacity),
+                borderRadius: radius,
+                border: Border.all(color: tokens.glassBorder),
               ),
-            ],
-          ),
-          child: Material(
-            type: MaterialType.transparency,
-            color: Colors.transparent,
-            child: child,
+              child: Stack(
+                fit: StackFit.passthrough,
+                children: [
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 1,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.white.withValues(alpha: 0.35 * opacity),
+                            Colors.white.withValues(alpha: 0.0),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Material(
+                    type: MaterialType.transparency,
+                    color: Colors.transparent,
+                    child: child,
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),

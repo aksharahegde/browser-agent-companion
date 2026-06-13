@@ -61,7 +61,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           onBack: widget.onBack,
           onMinimize: () => hideOverlayWindow(ref),
         ),
-        Divider(height: 1, color: tokens.hairline),
         Expanded(
           child: ListView(
             padding: EdgeInsets.all(tokens.spaceMd),
@@ -145,16 +144,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
               SizedBox(height: tokens.spaceLg),
               _SectionHeading(title: 'Permissions'),
-              Container(
-                padding: EdgeInsets.all(tokens.spaceMd),
-                decoration: BoxDecoration(
-                  color: tokens.glassFill(0.4),
-                  borderRadius: BorderRadius.circular(tokens.radiusMd),
-                  border: Border.all(color: tokens.glassBorder),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
+              DecoratedBox(
+                decoration: tokens.surfaceDecoration(),
+                child: Padding(
+                  padding: EdgeInsets.all(tokens.spaceMd),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                     Text(
                       'Screen recording permission',
                       style: Theme.of(context).textTheme.titleSmall,
@@ -186,6 +182,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                   ],
                 ),
+              ),
               ),
               SizedBox(height: tokens.spaceLg),
               FilledButton(

@@ -64,28 +64,23 @@ class _OverlayWindowState extends ConsumerState<OverlayWindow> {
             if (mounted) setState(() => _promptController.clear());
           },
         ),
-        Divider(height: 1, color: tokens.hairline),
+        SizedBox(height: tokens.spaceSm),
         Expanded(
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               PanelSection(
                 flex: 2,
                 title: 'Prompt',
                 child: _buildPromptPanel(workflowsAsync),
               ),
-              SizedBox(
-                width: 1,
-                child: ColoredBox(color: tokens.hairline),
-              ),
+              SizedBox(width: tokens.spaceMd),
               PanelSection(
                 flex: 3,
                 title: 'Trace',
                 child: TraceTimeline(events: _trace),
               ),
-              SizedBox(
-                width: 1,
-                child: ColoredBox(color: tokens.hairline),
-              ),
+              SizedBox(width: tokens.spaceMd),
               PanelSection(
                 flex: 2,
                 title: 'History',

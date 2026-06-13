@@ -36,7 +36,6 @@ class SessionsPage extends ConsumerWidget {
             ),
           ],
         ),
-        Divider(height: 1, color: tokens.hairline),
         Expanded(
           child: sessions.when(
             data: (items) {

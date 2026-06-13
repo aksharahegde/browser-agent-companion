@@ -19,20 +19,25 @@ class PanelSection extends StatelessWidget {
     final tokens = context.tokens;
 
     final content = Padding(
-      padding: EdgeInsets.all(tokens.spaceMd),
+      padding: EdgeInsets.fromLTRB(
+        tokens.spaceMd,
+        tokens.spaceMd,
+        tokens.spaceMd,
+        tokens.spaceMd,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (title != null) ...[
             Text(
-              title!,
+              title!.toUpperCase(),
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: tokens.textMuted,
                     fontWeight: FontWeight.w600,
-                    letterSpacing: 0.6,
+                    letterSpacing: 0.8,
                   ),
             ),
-            SizedBox(height: tokens.spaceSm),
+            SizedBox(height: tokens.spaceMd),
           ],
           Expanded(child: child),
         ],

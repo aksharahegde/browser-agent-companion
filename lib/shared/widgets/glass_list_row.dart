@@ -22,46 +22,51 @@ class GlassListRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
 
-    return Material(
-      color: tokens.glassFill(0.4),
-      borderRadius: BorderRadius.circular(tokens.radiusMd),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(tokens.radiusMd),
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: tokens.spaceMd,
-            vertical: tokens.spaceSm + 2,
-          ),
-          child: Row(
-            children: [
-              if (leading != null) ...[
-                leading!,
-                SizedBox(width: tokens.spaceSm),
-              ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    DefaultTextStyle(
-                      style: Theme.of(context).textTheme.bodyMedium!,
-                      child: title,
-                    ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 2),
+    return DecoratedBox(
+      decoration: tokens.surfaceDecoration(),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          hoverColor: Colors.white.withValues(alpha: 0.04),
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+          borderRadius: BorderRadius.circular(tokens.radiusMd),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: tokens.spaceMd,
+              vertical: tokens.spaceSm + 2,
+            ),
+            child: Row(
+              children: [
+                if (leading != null) ...[
+                  leading!,
+                  SizedBox(width: tokens.spaceSm),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       DefaultTextStyle(
-                        style: Theme.of(context).textTheme.labelSmall!,
-                        child: subtitle!,
+                        style: Theme.of(context).textTheme.bodyMedium!,
+                        child: title,
                       ),
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 2),
+                        DefaultTextStyle(
+                          style: Theme.of(context).textTheme.labelSmall!,
+                          child: subtitle!,
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              if (trailing != null) ...[
-                SizedBox(width: tokens.spaceSm),
-                trailing!,
+                if (trailing != null) ...[
+                  SizedBox(width: tokens.spaceSm),
+                  trailing!,
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -96,9 +101,9 @@ class HistoryStatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(tokens.radiusMd),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: color.withValues(alpha: 0.28)),
       ),
       child: Text(
         status,

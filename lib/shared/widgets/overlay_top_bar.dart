@@ -32,7 +32,7 @@ class OverlayTopBar extends ConsumerWidget {
     return Padding(
       padding: EdgeInsets.fromLTRB(
         tokens.spaceMd,
-        tokens.spaceSm + 2,
+        tokens.spaceMd,
         tokens.spaceMd,
         tokens.spaceSm,
       ),
@@ -149,26 +149,23 @@ class _SessionMenu extends StatelessWidget {
         const PopupMenuDivider(),
         const PopupMenuItem(value: '__new__', child: Text('New session')),
       ],
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: tokens.glassFill(0.4),
-          borderRadius: BorderRadius.circular(tokens.radiusMd),
-          border: Border.all(color: tokens.glassBorder),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                activeTitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium,
+      child: DecoratedBox(
+        decoration: tokens.chipDecoration(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  activeTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
               ),
-            ),
-            Icon(Icons.arrow_drop_down, size: 18, color: tokens.textMuted),
-          ],
+              Icon(Icons.expand_more, size: 18, color: tokens.textMuted),
+            ],
+          ),
         ),
       ),
     );

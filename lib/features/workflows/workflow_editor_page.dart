@@ -41,7 +41,6 @@ class _WorkflowEditorPageState extends ConsumerState<WorkflowEditorPage> {
             ),
           ],
         ),
-        Divider(height: 1, color: tokens.hairline),
         Expanded(
           child: workflows.when(
             data: (items) => ReorderableListView.builder(
