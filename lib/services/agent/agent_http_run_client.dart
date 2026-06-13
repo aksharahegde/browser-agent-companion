@@ -6,12 +6,17 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/logging.dart';
 import '../../data/models/trace_event.dart';
-import 'agent_backend_probe.dart';
+import 'agent_connection_uri.dart';
+import 'agent_host_validator.dart';
 
 class AgentHttpRunClient {
-  AgentHttpRunClient({required this.host});
+  AgentHttpRunClient({
+    required this.host,
+    this.authToken,
+  });
 
   final String host;
+  final String? authToken;
   final _uuid = const Uuid();
   final _connectionController =
       StreamController<ConnectionStatus>.broadcast();
@@ -31,9 +36,10 @@ class AgentHttpRunClient {
     if (_disposed) return;
     _setStatus(ConnectionStatus.connecting);
     try {
-      final uri = Uri.parse('${normalizeAgentHost(host)}/status');
+      final uri = agentHostUri(host, '/status');
       final client = HttpClient();
       final request = await client.getUrl(uri).timeout(const Duration(seconds: 8));
+      _applyAuthHeaders(request);
       final response = await request.close().timeout(const Duration(seconds: 8));
       final ok = response.statusCode == 200;
       await response.drain();
@@ -73,9 +79,10 @@ class AgentHttpRunClient {
     final completer = Completer<void>();
 
     try {
-      final uri = Uri.parse('${normalizeAgentHost(host)}/run');
+      final uri = agentHostUri(host, '/run');
       final request = await client.postUrl(uri).timeout(const Duration(seconds: 15));
       request.headers.contentType = ContentType.json;
+      _applyAuthHeaders(request);
       request.write(jsonEncode({'goal': goal}));
       final response = await request.close().timeout(const Duration(seconds: 15));
 
@@ -133,6 +140,12 @@ class AgentHttpRunClient {
     cancelRun();
     _connectionController.close();
     _traceController.close();
+  }
+
+  void _applyAuthHeaders(HttpClientRequest request) {
+    for (final entry in buildAgentAuthHeaders(authToken).entries) {
+      request.headers.set(entry.key, entry.value);
+    }
   }
 
   String _buildGoal(String prompt, AgentRunContext context) {

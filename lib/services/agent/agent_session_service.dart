@@ -3,6 +3,7 @@ import 'dart:async';
 import '../../data/models/app_settings.dart';
 import '../../data/models/trace_event.dart';
 import 'agent_backend_probe.dart';
+import 'agent_host_validator.dart';
 import 'agent_http_run_client.dart';
 import 'agent_websocket_client.dart';
 
@@ -40,33 +41,72 @@ class AgentSessionService {
     _traceEvents.clear();
     _emitTrace(const []);
 
-    _configuredHost = settings.agentHost;
+    try {
+      _configuredHost = parseAgentHost(settings.agentHost);
+    } on AgentHostValidationException catch (error) {
+      _emitTrace([
+        TraceEvent(
+          id: 'host-validation',
+          type: TraceEventType.error,
+          message: error.message,
+          timestamp: DateTime.now(),
+        ),
+      ]);
+      _emitStatus(ConnectionStatus.error);
+      return;
+    }
+
     _configuredSessionId = settings.activeSessionId;
     _configuredAuthToken =
         settings.authToken.isEmpty ? null : settings.authToken;
 
-    final useHttpRun = await probeHttpRunBackend(settings.agentHost);
-    if (useHttpRun) {
-      _backend = _AgentBackend.httpRun;
-      _httpClient = AgentHttpRunClient(host: settings.agentHost);
-      _subscriptions.add(_httpClient!.onConnectionStatus.listen(_emitStatus));
-      _subscriptions.add(
-        _httpClient!.onTraceEvent.listen((event) {
-          _traceEvents.add(event);
-          _emitTrace(List.unmodifiable(_traceEvents));
-        }),
+    if (settings.activeSessionId.isNotEmpty) {
+      await _configureWebSocket(
+        host: _configuredHost!,
+        sessionId: settings.activeSessionId,
+        authToken: _configuredAuthToken,
       );
-      await _httpClient!.connect();
       return;
     }
 
-    if (settings.activeSessionId.isEmpty) return;
+    if (_configuredAuthToken == null) {
+      _emitTrace([
+        TraceEvent(
+          id: 'http-auth-required',
+          type: TraceEventType.error,
+          message: 'HTTP /run backend requires an auth token',
+          timestamp: DateTime.now(),
+        ),
+      ]);
+      _emitStatus(ConnectionStatus.error);
+      return;
+    }
 
+    final useHttpRun = await probeHttpRunBackend(
+      _configuredHost!,
+      authToken: _configuredAuthToken,
+    );
+    if (!useHttpRun) {
+      _emitStatus(ConnectionStatus.error);
+      return;
+    }
+
+    await _configureHttpRun(
+      host: _configuredHost!,
+      authToken: _configuredAuthToken!,
+    );
+  }
+
+  Future<void> _configureWebSocket({
+    required String host,
+    required String sessionId,
+    String? authToken,
+  }) async {
     _backend = _AgentBackend.websocket;
     _wsClient = AgentWebSocketClient(
-      host: settings.agentHost,
-      sessionId: settings.activeSessionId,
-      authToken: _configuredAuthToken,
+      host: host,
+      sessionId: sessionId,
+      authToken: authToken,
     );
 
     _subscriptions.add(_wsClient!.onConnectionStatus.listen(_emitStatus));
@@ -80,6 +120,22 @@ class AgentSessionService {
     _subscriptions.add(_wsClient!.onToolCall.listen(_handleToolCall));
 
     await _wsClient!.connect();
+  }
+
+  Future<void> _configureHttpRun({
+    required String host,
+    required String authToken,
+  }) async {
+    _backend = _AgentBackend.httpRun;
+    _httpClient = AgentHttpRunClient(host: host, authToken: authToken);
+    _subscriptions.add(_httpClient!.onConnectionStatus.listen(_emitStatus));
+    _subscriptions.add(
+      _httpClient!.onTraceEvent.listen((event) {
+        _traceEvents.add(event);
+        _emitTrace(List.unmodifiable(_traceEvents));
+      }),
+    );
+    await _httpClient!.connect();
   }
 
   Future<void> disconnect() async {
