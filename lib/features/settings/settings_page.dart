@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 
 import '../../data/models/app_settings.dart';
+import '../../services/agent/agent_host_validator.dart';
 import '../../shared/app_messenger.dart';
 import '../../shared/providers.dart';
 import '../../shared/theme.dart';
@@ -208,14 +209,24 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Future<void> _applyAndReconnect() async {
     final current = ref.read(settingsProvider);
-    final updated = current.copyWith(
-      agentHost: _hostController.text.trim(),
-      authToken: _tokenController.text.trim(),
-    );
-    await _save(updated);
-    await ref.read(agentSessionServiceProvider).configure(updated);
-    if (mounted) {
-      showAppSnackBar('Settings saved');
+    final rawHost = _hostController.text.trim();
+    final token = _tokenController.text.trim();
+
+    try {
+      final host = parseAgentHost(rawHost);
+      final updated = current.copyWith(
+        agentHost: host,
+        authToken: token,
+      );
+      await _save(updated);
+      await ref.read(agentSessionServiceProvider).configure(updated);
+      if (mounted) {
+        showAppSnackBar('Settings saved');
+      }
+    } on AgentHostValidationException catch (error) {
+      if (mounted) {
+        showAppSnackBar(error.message);
+      }
     }
   }
 }

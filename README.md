@@ -8,7 +8,7 @@ Mac menu-bar companion that connects your desktop to the Cloudflare Stateful Bro
 - **Overlay panel** — prompt/workflow runner, live agent trace timeline, run history, and session switcher
 - **Multi-session conversations** — create, rename, switch, and delete agent sessions; trace state hydrates from the backend on reconnect
 - **Saved workflows** — SQLite-backed prompt templates with optional global hotkeys and one-click run from the tray menu
-- **Local tool bridge** — handles client-side tool calls from the agent: `getClipboardText`, `getClipboardImage`, `captureScreenshot`, `pickFile`, `readFile`
+- **Local tool bridge** — handles client-side tool calls from the agent: `getClipboardText`, `getClipboardImage`, `captureScreenshot`, `pickFile` (with user approval)
 
 ## Requirements
 
@@ -45,8 +45,8 @@ The app runs as a menu-bar agent (no Dock icon). Use the tray icon to open the o
 
 Open **Settings** from the tray menu:
 
-- **Agent host URL** — your deployed Worker URL (default: `https://stateful-browser-agent.workers.dev`)
-- **Auth token** — optional, sent as `Authorization: Bearer` on the WebSocket handshake
+- **Agent host URL** — your deployed Worker URL (default: `https://stateful-browser-agent.workers.dev`); remote hosts must use `https` (`http://localhost` is allowed for local dev)
+- **Auth token** — sent as `Authorization: Bearer` on WebSocket and HTTP requests; required for HTTP `/run` backends; optional for WebSocket session backends
 - **Active session** — shown read-only with a copy button; managed via the Sessions UI, not typed manually
 - **Default attach clipboard / screenshot** — default toggles for the overlay prompt panel
 - **Launch at login** — start the app automatically at login
