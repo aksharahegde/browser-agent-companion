@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/trace_event.dart';
 import '../../data/models/workflow.dart';
+import '../../core/overlay_window_service.dart';
 import '../../shared/providers.dart';
 import '../../shared/widgets/connection_badge.dart';
 
@@ -47,31 +48,30 @@ class _OverlayWindowState extends ConsumerState<OverlayWindow> {
     final workflowsAsync = ref.watch(workflowsProvider);
 
     return Material(
-      child: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor.withValues(
-                alpha: settings.overlayOpacity,
-              ),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF34373F)),
-        ),
-        child: Column(
-          children: [
-            _buildTitleBar(context, settings.agentHost),
-            const Divider(height: 1),
-            Expanded(
-              child: Row(
-                children: [
-                  Expanded(flex: 2, child: _buildPromptPanel(workflowsAsync)),
-                  const VerticalDivider(width: 1),
-                  Expanded(flex: 3, child: TraceTimeline(events: _trace)),
-                  const VerticalDivider(width: 1),
-                  Expanded(flex: 2, child: _buildHistoryPanel()),
-                ],
-              ),
+      color: Theme.of(context).scaffoldBackgroundColor.withValues(
+            alpha: settings.overlayOpacity,
+          ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFF34373F)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          _buildTitleBar(context, settings.agentHost),
+          const Divider(height: 1),
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(flex: 2, child: _buildPromptPanel(workflowsAsync)),
+                const VerticalDivider(width: 1),
+                Expanded(flex: 3, child: TraceTimeline(events: _trace)),
+                const VerticalDivider(width: 1),
+                Expanded(flex: 2, child: _buildHistoryPanel()),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -97,7 +97,7 @@ class _OverlayWindowState extends ConsumerState<OverlayWindow> {
             onSelected: (value) async {
               switch (value) {
                 case 'minimize':
-                  ref.read(overlayVisibleProvider.notifier).state = false;
+                  await hideOverlayWindow(ref);
                 case 'quit':
                   await ref.read(appLifecycleServiceProvider).quitApp();
               }

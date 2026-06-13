@@ -17,32 +17,48 @@ class AppLifecycleService {
     required AgentSessionService agentSessionService,
     required WorkflowService workflowService,
     required Future<void> Function() onBeforeQuit,
+    required Future<void> Function() hideOverlay,
   })  : _agentSessionService = agentSessionService,
         _workflowService = workflowService,
-        _onBeforeQuit = onBeforeQuit;
+        _onBeforeQuit = onBeforeQuit,
+        _hideOverlay = hideOverlay;
 
   final AgentSessionService _agentSessionService;
   final WorkflowService _workflowService;
   final Future<void> Function() _onBeforeQuit;
+  final Future<void> Function() _hideOverlay;
   bool _isQuitting = false;
+
+  static const _cleanupTimeout = Duration(seconds: 2);
 
   Future<void> quitApp() async {
     if (_isQuitting) return;
     _isQuitting = true;
     logInfo('Quitting application');
 
+    unawaited(windowManager.hide());
     try {
-      await _agentSessionService.cancelRun();
-      await _agentSessionService.disconnect();
-      await _workflowService.unregisterAllHotkeys();
-      await trayManager.destroy();
-      await _onBeforeQuit();
-      await windowManager.destroy();
+      await _hideOverlay().timeout(_cleanupTimeout, onTimeout: () {});
+    } catch (_) {}
+
+    try {
+      await _runCleanup().timeout(
+        _cleanupTimeout,
+        onTimeout: () => logInfo('Quit cleanup timed out'),
+      );
     } catch (error, stackTrace) {
       logError('Error during quit', error: error, stackTrace: stackTrace);
-    } finally {
-      exit(0);
     }
+
+    exit(0);
+  }
+
+  Future<void> _runCleanup() async {
+    await _workflowService.unregisterAllHotkeys();
+    await hotKeyManager.unregisterAll();
+    await _agentSessionService.disconnect();
+    await trayManager.destroy();
+    await _onBeforeQuit();
   }
 
   Future<void> registerQuitHotkey(Future<void> Function() onQuit) async {

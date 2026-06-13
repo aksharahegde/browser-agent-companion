@@ -5,13 +5,12 @@ Mac menu-bar companion that bridges local desktop capabilities (screenshot, clip
 ## Requirements
 
 - macOS 12+
-- Flutter 3.5+ (a local SDK is vendored at `.flutter-sdk/` if needed)
+- Flutter 3.5+ (stable channel)
 - Cloudflare `stateful-browser-agent` backend deployed and reachable
 
 ## Setup
 
 ```bash
-export PATH="$(pwd)/.flutter-sdk/bin:$PATH"
 flutter pub get
 dart run build_runner build
 ```

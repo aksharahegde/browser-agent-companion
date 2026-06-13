@@ -51,9 +51,14 @@ class AgentWebSocketClient {
   Future<void> disconnect() async {
     _intentionalDisconnect = true;
     _reconnectTimer?.cancel();
-    await _channel?.sink.close();
+    final channel = _channel;
     _channel = null;
     _setStatus(ConnectionStatus.disconnected);
+    if (channel == null) return;
+
+    try {
+      await channel.sink.close().timeout(const Duration(milliseconds: 500));
+    } catch (_) {}
   }
 
   Future<dynamic> call(
