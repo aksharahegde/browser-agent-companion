@@ -10,6 +10,7 @@ class GlassListRow extends StatelessWidget {
     this.subtitle,
     this.trailing,
     this.onTap,
+    this.selected = false,
   });
 
   final Widget? leading;
@@ -17,13 +18,18 @@ class GlassListRow extends StatelessWidget {
   final Widget? subtitle;
   final Widget? trailing;
   final VoidCallback? onTap;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
 
     return DecoratedBox(
-      decoration: tokens.surfaceDecoration(),
+      decoration: tokens.surfaceDecoration().copyWith(
+        border: Border.all(
+          color: selected ? AppColors.accent.withValues(alpha: 0.55) : tokens.glassBorderSubtle,
+        ),
+      ),
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(

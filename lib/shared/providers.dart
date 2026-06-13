@@ -76,24 +76,62 @@ final workflowServiceProvider = Provider((ref) {
 });
 
 final settingsProvider =
-    StateNotifierProvider<SettingsNotifier, AppSettings>((ref) {
-  return SettingsNotifier(ref.watch(databaseProvider));
-});
+    NotifierProvider<SettingsNotifier, AppSettings>(SettingsNotifier.new);
 
-class SettingsNotifier extends StateNotifier<AppSettings> {
-  SettingsNotifier(this._database) : super(AppSettings.defaults);
-
-  final AppDatabase _database;
+class SettingsNotifier extends Notifier<AppSettings> {
+  @override
+  AppSettings build() => AppSettings.defaults;
 
   Future<void> load() async {
-    state = await _database.loadSettings();
+    state = await ref.read(databaseProvider).loadSettings();
   }
 
   Future<void> update(AppSettings settings) async {
     state = settings;
-    await _database.saveSettings(settings);
+    await ref.read(databaseProvider).saveSettings(settings);
   }
 }
+
+class OverlayVisible extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void show() => state = true;
+  void hide() => state = false;
+}
+
+class SettingsVisible extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void show() => state = true;
+  void hide() => state = false;
+}
+
+class WorkflowsVisible extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void show() => state = true;
+  void hide() => state = false;
+}
+
+class SessionsVisible extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void show() => state = true;
+  void hide() => state = false;
+}
+
+final overlayVisibleProvider =
+    NotifierProvider<OverlayVisible, bool>(OverlayVisible.new);
+final settingsVisibleProvider =
+    NotifierProvider<SettingsVisible, bool>(SettingsVisible.new);
+final workflowsVisibleProvider =
+    NotifierProvider<WorkflowsVisible, bool>(WorkflowsVisible.new);
+final sessionsVisibleProvider =
+    NotifierProvider<SessionsVisible, bool>(SessionsVisible.new);
 
 final appLifecycleServiceProvider = Provider<AppLifecycleService>((ref) {
   return AppLifecycleService(
@@ -106,16 +144,11 @@ final appLifecycleServiceProvider = Provider<AppLifecycleService>((ref) {
           );
     },
     hideOverlay: () async {
-      ref.read(overlayVisibleProvider.notifier).state = false;
-      ref.read(settingsVisibleProvider.notifier).state = false;
-      ref.read(workflowsVisibleProvider.notifier).state = false;
-      ref.read(sessionsVisibleProvider.notifier).state = false;
+      ref.read(overlayVisibleProvider.notifier).hide();
+      ref.read(settingsVisibleProvider.notifier).hide();
+      ref.read(workflowsVisibleProvider.notifier).hide();
+      ref.read(sessionsVisibleProvider.notifier).hide();
       await windowManager.hide();
     },
   );
 });
-
-final overlayVisibleProvider = StateProvider<bool>((ref) => false);
-final settingsVisibleProvider = StateProvider<bool>((ref) => false);
-final workflowsVisibleProvider = StateProvider<bool>((ref) => false);
-final sessionsVisibleProvider = StateProvider<bool>((ref) => false);

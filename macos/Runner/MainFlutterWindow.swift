@@ -8,12 +8,21 @@ class MainFlutterWindow: NSWindow {
     self.contentViewController = flutterViewController
     self.setFrame(windowFrame, display: true)
 
-    self.isOpaque = false
-    self.backgroundColor = NSColor.clear
-    self.titlebarAppearsTransparent = true
+    applyTransparentChrome()
 
     RegisterGeneratedPlugins(registry: flutterViewController)
 
     super.awakeFromNib()
+  }
+
+  override func orderFront(_ sender: Any?) {
+    applyTransparentChrome()
+    super.orderFront(sender)
+  }
+
+  private func applyTransparentChrome() {
+    isOpaque = false
+    backgroundColor = NSColor.clear
+    titlebarAppearsTransparent = true
   }
 }

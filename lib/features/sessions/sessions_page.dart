@@ -123,7 +123,7 @@ class SessionsPage extends ConsumerWidget {
     await ref.read(sessionServiceProvider).createAndSwitchSession();
     ref.invalidate(sessionsProvider);
     ref.invalidate(runHistoryProvider);
-    ref.read(sessionsVisibleProvider.notifier).state = false;
+    ref.read(sessionsVisibleProvider.notifier).hide();
   }
 
   Future<void> _switchSession(
@@ -134,7 +134,7 @@ class SessionsPage extends ConsumerWidget {
     await ref.read(sessionServiceProvider).switchActiveSession(session.id);
     ref.invalidate(sessionsProvider);
     ref.invalidate(runHistoryProvider);
-    ref.read(sessionsVisibleProvider.notifier).state = false;
+    ref.read(sessionsVisibleProvider.notifier).hide();
   }
 
   Future<void> _renameSession(

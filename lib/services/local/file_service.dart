@@ -8,7 +8,7 @@ class FileService {
   Future<({String path, String name, String mime, String? base64})?> pickFile({
     bool includeContent = false,
   }) async {
-    final result = await FilePicker.platform.pickFiles(withData: includeContent);
+    final result = await FilePicker.pickFiles(withData: includeContent);
     if (result == null || result.files.isEmpty) return null;
 
     final file = result.files.first;

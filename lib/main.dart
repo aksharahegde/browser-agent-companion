@@ -26,6 +26,7 @@ Future<void> main() async {
 
   await windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.setBackgroundColor(Colors.transparent);
+    await windowManager.setHasShadow(false);
   });
 
   runApp(

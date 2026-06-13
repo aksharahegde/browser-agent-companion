@@ -25,6 +25,7 @@ class _OverlayWindowState extends ConsumerState<OverlayWindow> {
   bool _attachScreenshot = false;
   bool _attachClipboard = true;
   WorkflowItem? _selectedWorkflow;
+  String? _selectedHistoryId;
   List<TraceEvent> _trace = [];
   ConnectionStatus _connectionStatus = ConnectionStatus.disconnected;
 
@@ -56,7 +57,9 @@ class _OverlayWindowState extends ConsumerState<OverlayWindow> {
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
     final workflowsAsync = ref.watch(workflowsProvider);
+    final historyAsync = ref.watch(runHistoryProvider);
     final tokens = context.tokens;
+    final displayTrace = _traceForDisplay(historyAsync);
 
     return Column(
       children: [
@@ -82,8 +85,8 @@ class _OverlayWindowState extends ConsumerState<OverlayWindow> {
               SizedBox(width: tokens.spaceMd),
               PanelSection(
                 flex: 3,
-                title: 'Trace',
-                child: TraceTimeline(events: _trace),
+                title: _selectedHistoryId == null ? 'Trace' : 'Run details',
+                child: TraceTimeline(events: displayTrace),
               ),
               SizedBox(width: tokens.spaceMd),
               PanelSection(
@@ -176,8 +179,10 @@ class _OverlayWindowState extends ConsumerState<OverlayWindow> {
           runSpacing: tokens.spaceSm,
           children: [
             OutlinedButton(
-              onPressed: () =>
-                  ref.read(agentSessionServiceProvider).clearTrace(),
+              onPressed: () {
+                setState(() => _selectedHistoryId = null);
+                ref.read(agentSessionServiceProvider).clearTrace();
+              },
               child: const Text('Clear'),
             ),
             OutlinedButton(
@@ -218,6 +223,8 @@ class _OverlayWindowState extends ConsumerState<OverlayWindow> {
           itemBuilder: (context, index) {
             final entry = entries[index];
             return GlassListRow(
+              selected: _selectedHistoryId == entry.id,
+              onTap: () => setState(() => _selectedHistoryId = entry.id),
               title: Text(
                 entry.workflowName,
                 maxLines: 1,
@@ -238,12 +245,63 @@ class _OverlayWindowState extends ConsumerState<OverlayWindow> {
     );
   }
 
+  List<TraceEvent> _traceForDisplay(AsyncValue<List<RunHistoryEntry>> history) {
+    if (_selectedHistoryId == null) return _trace;
+
+    final entry = history.maybeWhen(
+      data: (entries) {
+        for (final item in entries) {
+          if (item.id == _selectedHistoryId) return item;
+        }
+        return null;
+      },
+      orElse: () => null,
+    );
+    if (entry == null) return _trace;
+    return _traceForHistoryEntry(entry);
+  }
+
+  List<TraceEvent> _traceForHistoryEntry(RunHistoryEntry entry) {
+    final events = <TraceEvent>[
+      TraceEvent(
+        id: '${entry.id}-prompt',
+        type: TraceEventType.userPrompt,
+        message: entry.prompt.isEmpty ? '(no prompt recorded)' : entry.prompt,
+        timestamp: entry.startedAt,
+      ),
+      TraceEvent(
+        id: '${entry.id}-status',
+        type: TraceEventType.status,
+        message: 'Run ${entry.status}',
+        timestamp: entry.startedAt,
+      ),
+    ];
+
+    if (entry.summary.isNotEmpty) {
+      final lowerStatus = entry.status.toLowerCase();
+      final isFailed =
+          lowerStatus.contains('fail') || lowerStatus.contains('error');
+      events.add(
+        TraceEvent(
+          id: '${entry.id}-summary',
+          type: isFailed ? TraceEventType.error : TraceEventType.agentResponse,
+          message: entry.summary,
+          timestamp: entry.completedAt ?? entry.startedAt,
+        ),
+      );
+    }
+
+    return events;
+  }
+
   Future<void> _runPrompt() async {
     final workflowService = ref.read(workflowServiceProvider);
     final sessionService = ref.read(sessionServiceProvider);
     final settings = ref.read(settingsProvider);
     final sessionId = settings.activeSessionId;
     if (sessionId.isEmpty) return;
+
+    setState(() => _selectedHistoryId = null);
 
     try {
       String promptForTitle = _promptController.text.trim();

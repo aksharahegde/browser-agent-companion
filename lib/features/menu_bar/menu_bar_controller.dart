@@ -125,30 +125,30 @@ class _MenuBarControllerState extends ConsumerState<MenuBarController>
   }
 
   Future<void> _showSettings() async {
-    ref.read(settingsVisibleProvider.notifier).state = true;
-    ref.read(workflowsVisibleProvider.notifier).state = false;
-    ref.read(sessionsVisibleProvider.notifier).state = false;
+    ref.read(settingsVisibleProvider.notifier).show();
+    ref.read(workflowsVisibleProvider.notifier).hide();
+    ref.read(sessionsVisibleProvider.notifier).hide();
     await showOverlayWindow(ref);
   }
 
   Future<void> _showWorkflows() async {
-    ref.read(workflowsVisibleProvider.notifier).state = true;
-    ref.read(settingsVisibleProvider.notifier).state = false;
-    ref.read(sessionsVisibleProvider.notifier).state = false;
+    ref.read(workflowsVisibleProvider.notifier).show();
+    ref.read(settingsVisibleProvider.notifier).hide();
+    ref.read(sessionsVisibleProvider.notifier).hide();
     await showOverlayWindow(ref);
   }
 
   Future<void> _showSessions() async {
-    ref.read(sessionsVisibleProvider.notifier).state = true;
-    ref.read(settingsVisibleProvider.notifier).state = false;
-    ref.read(workflowsVisibleProvider.notifier).state = false;
+    ref.read(sessionsVisibleProvider.notifier).show();
+    ref.read(settingsVisibleProvider.notifier).hide();
+    ref.read(workflowsVisibleProvider.notifier).hide();
     await showOverlayWindow(ref);
   }
 
   void _backToOverlay() {
-    ref.read(settingsVisibleProvider.notifier).state = false;
-    ref.read(workflowsVisibleProvider.notifier).state = false;
-    ref.read(sessionsVisibleProvider.notifier).state = false;
+    ref.read(settingsVisibleProvider.notifier).hide();
+    ref.read(workflowsVisibleProvider.notifier).hide();
+    ref.read(sessionsVisibleProvider.notifier).hide();
   }
 
   @override
